@@ -1,0 +1,27 @@
+pub mod attributes;
+pub mod auth;
+pub mod branch;
+pub mod client;
+pub mod commands;
+pub mod commit;
+pub mod config;
+pub mod database;
+pub mod diff;
+pub mod error;
+pub mod hash;
+pub mod hooks;
+pub mod ignore;
+pub mod index;
+pub mod merge;
+pub mod protocol;
+pub mod remote;
+pub mod repo;
+pub mod reset;
+pub mod server;
+pub mod stash;
+pub mod status;
+pub mod store;
+pub mod sync;
+pub mod tag;
+
+pub use error::{Error, Result};
