@@ -8,7 +8,7 @@ If you discover a security vulnerability in MUG, please report it responsibly to
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email security@example.com with the following information:
+Instead, please email atsharma623@gmail.com with the following information:
 
 1. **Description**: A clear description of the vulnerability
 2. **Location**: The affected file(s), function(s), or module(s)
@@ -113,7 +113,7 @@ We follow responsible disclosure principles:
 ## Contact
 
 For security matters:
-- **Email**: security@example.com
+- **Email**: atsharma623@gmail.com
 - **Response Time**: Within 48 hours
 
 For other issues, use standard GitHub issues.
