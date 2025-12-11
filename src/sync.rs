@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 
+use crate::client::build_remote_client;
 use crate::error::Result;
 use crate::repo::Repository;
-use crate::client::build_remote_client;
 
 /// Represents a remote repository with its objects
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,9 +65,9 @@ impl SyncManager {
     pub async fn push(&self, remote_name: &str, branch: &str) -> Result<SyncResult> {
         // Get remote configuration
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
-        let remote = remote_manager
-            .get(remote_name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", remote_name)))?;
+        let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
+            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+        })?;
 
         // Get current commits
         let commits = self.repo.log()?;
@@ -105,9 +105,9 @@ impl SyncManager {
     pub async fn pull(&self, remote_name: &str, branch: &str) -> Result<SyncResult> {
         // Get remote configuration
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
-        let remote = remote_manager
-            .get(remote_name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", remote_name)))?;
+        let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
+            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+        })?;
 
         // Build HTTP client and send pull
         let client = build_remote_client(&remote).await?;
@@ -116,7 +116,12 @@ impl SyncManager {
                 if response.success {
                     let bytes = response.commits.len() * 256; // Estimate bytes per commit
                     Ok(SyncResult::success(
-                        format!("Pulled {} commits from {}/{}", response.commits.len(), remote.name, branch),
+                        format!(
+                            "Pulled {} commits from {}/{}",
+                            response.commits.len(),
+                            remote.name,
+                            branch
+                        ),
                         0,
                         response.commits.len(),
                         bytes,
@@ -132,9 +137,9 @@ impl SyncManager {
     /// Fetch commits from remote (without merging)
     pub async fn fetch(&self, remote_name: &str) -> Result<SyncResult> {
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
-        let remote = remote_manager
-            .get(remote_name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", remote_name)))?;
+        let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
+            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+        })?;
 
         // Build HTTP client and send fetch
         let client = build_remote_client(&remote).await?;
@@ -164,8 +169,7 @@ impl SyncManager {
     /// Clone a remote repository (minimal implementation)
     pub fn clone(remote_url: &str, destination: Option<&str>) -> Result<()> {
         // Extract repo name from URL
-        let repo_name = extract_repo_name(remote_url)
-            .unwrap_or_else(|| "repository".to_string());
+        let repo_name = extract_repo_name(remote_url).unwrap_or_else(|| "repository".to_string());
 
         let target_dir = destination.unwrap_or(&repo_name);
 
@@ -191,9 +195,9 @@ impl SyncManager {
     /// Get remote info
     pub fn get_remote_info(&self, remote_name: &str) -> Result<RemoteRef> {
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
-        let remote = remote_manager
-            .get(remote_name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", remote_name)))?;
+        let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
+            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+        })?;
 
         // Get local branches and commits
         let branches = self.repo.branches()?;
@@ -210,9 +214,9 @@ impl SyncManager {
     /// Check if we can reach the remote
     pub async fn test_connection(&self, remote_name: &str) -> Result<bool> {
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
-        let remote = remote_manager
-            .get(remote_name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", remote_name)))?;
+        let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
+            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+        })?;
 
         // Attempt actual HTTP connection
         let client = build_remote_client(&remote).await?;
@@ -288,14 +292,8 @@ mod tests {
             extract_repo_name("git@github.com:user/myrepo"),
             Some("myrepo".to_string())
         );
-        assert_eq!(
-            extract_repo_name("/path/to/repo"),
-            Some("repo".to_string())
-        );
-        assert_eq!(
-            extract_repo_name("repo/"),
-            Some("repo".to_string())
-        );
+        assert_eq!(extract_repo_name("/path/to/repo"), Some("repo".to_string()));
+        assert_eq!(extract_repo_name("repo/"), Some("repo".to_string()));
     }
 
     #[test]

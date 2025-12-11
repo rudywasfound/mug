@@ -36,9 +36,8 @@ impl Config {
 
         if config_path.exists() {
             let content = fs::read_to_string(&config_path)?;
-            serde_json::from_str(&content).map_err(|e| {
-                crate::error::Error::Custom(format!("Failed to parse config: {}", e))
-            })
+            serde_json::from_str(&content)
+                .map_err(|e| crate::error::Error::Custom(format!("Failed to parse config: {}", e)))
         } else {
             Ok(Config::new())
         }

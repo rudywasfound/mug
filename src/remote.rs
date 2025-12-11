@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use crate::error::Result;
 use crate::database::MugDb;
+use crate::error::Result;
+use serde::{Deserialize, Serialize};
 
 /// Remote configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,7 +103,8 @@ impl RemoteManager {
 
     /// Update a remote URL
     pub fn update_url(&self, name: &str, new_url: &str) -> Result<()> {
-        let mut remote = self.get(name)?
+        let mut remote = self
+            .get(name)?
             .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", name)))?;
 
         remote.url = new_url.to_string();
@@ -116,7 +117,8 @@ impl RemoteManager {
 
     /// Set whether a remote supports fetch
     pub fn set_fetch(&self, name: &str, enabled: bool) -> Result<()> {
-        let mut remote = self.get(name)?
+        let mut remote = self
+            .get(name)?
             .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", name)))?;
 
         remote.fetch = enabled;
@@ -128,7 +130,8 @@ impl RemoteManager {
 
     /// Set whether a remote supports push
     pub fn set_push(&self, name: &str, enabled: bool) -> Result<()> {
-        let mut remote = self.get(name)?
+        let mut remote = self
+            .get(name)?
             .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", name)))?;
 
         remote.push = enabled;
@@ -141,7 +144,10 @@ impl RemoteManager {
     /// Set default remote (origin)
     pub fn set_default(&self, name: &str) -> Result<()> {
         if self.get(name)?.is_none() {
-            return Err(crate::error::Error::Custom(format!("Remote '{}' not found", name)));
+            return Err(crate::error::Error::Custom(format!(
+                "Remote '{}' not found",
+                name
+            )));
         }
 
         self.db.set("config", "default_remote", name.as_bytes())?;
@@ -158,18 +164,12 @@ impl RemoteManager {
 
     /// Check if a remote supports fetch
     pub fn can_fetch(&self, name: &str) -> Result<bool> {
-        Ok(self
-            .get(name)?
-            .map(|r| r.fetch)
-            .unwrap_or(false))
+        Ok(self.get(name)?.map(|r| r.fetch).unwrap_or(false))
     }
 
     /// Check if a remote supports push
     pub fn can_push(&self, name: &str) -> Result<bool> {
-        Ok(self
-            .get(name)?
-            .map(|r| r.push)
-            .unwrap_or(false))
+        Ok(self.get(name)?.map(|r| r.push).unwrap_or(false))
     }
 }
 
@@ -180,10 +180,22 @@ mod tests {
 
     #[test]
     fn test_protocol_detection() {
-        assert_eq!(Protocol::from_url("https://github.com/user/repo"), Protocol::Https);
-        assert_eq!(Protocol::from_url("http://localhost:3000/repo"), Protocol::Http);
-        assert_eq!(Protocol::from_url("git@github.com:user/repo"), Protocol::Ssh);
-        assert_eq!(Protocol::from_url("ssh://git@github.com/user/repo"), Protocol::Ssh);
+        assert_eq!(
+            Protocol::from_url("https://github.com/user/repo"),
+            Protocol::Https
+        );
+        assert_eq!(
+            Protocol::from_url("http://localhost:3000/repo"),
+            Protocol::Http
+        );
+        assert_eq!(
+            Protocol::from_url("git@github.com:user/repo"),
+            Protocol::Ssh
+        );
+        assert_eq!(
+            Protocol::from_url("ssh://git@github.com/user/repo"),
+            Protocol::Ssh
+        );
     }
 
     #[test]
@@ -243,7 +255,9 @@ mod tests {
         manager
             .add("origin", "https://github.com/user/repo.git")
             .unwrap();
-        manager.update_url("origin", "https://github.com/newuser/repo.git").unwrap();
+        manager
+            .update_url("origin", "https://github.com/newuser/repo.git")
+            .unwrap();
 
         let remote = manager.get("origin").unwrap().unwrap();
         assert_eq!(remote.url, "https://github.com/newuser/repo.git");

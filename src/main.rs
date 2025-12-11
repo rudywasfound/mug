@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use mug::repo::Repository;
 use mug::error::Result;
+use mug::repo::Repository;
 
 #[derive(Parser)]
 #[command(name = "mug")]
@@ -267,7 +267,10 @@ async fn main() -> Result<()> {
             let repo = Repository::open(".")?;
             let _status = repo.status()?;
 
-            println!("On branch: {}", repo.current_branch()?.unwrap_or("main".to_string()));
+            println!(
+                "On branch: {}",
+                repo.current_branch()?.unwrap_or("main".to_string())
+            );
             println!("Working directory status displayed");
         }
 
@@ -364,7 +367,11 @@ async fn main() -> Result<()> {
             let repo = Repository::open(".")?;
             let reset_mode = mug::reset::ResetMode::from_str(&mode)?;
             mug::reset::reset(&repo, reset_mode, commit.as_deref())?;
-            println!("Reset {} to {:?}", mode, commit.unwrap_or("HEAD".to_string()));
+            println!(
+                "Reset {} to {:?}",
+                mode,
+                commit.unwrap_or("HEAD".to_string())
+            );
         }
 
         Commands::Tag { name, message } => {
@@ -373,7 +380,10 @@ async fn main() -> Result<()> {
 
             // Get current HEAD commit
             let commits = repo.log()?;
-            let head_commit = commits.first().map(|c| c.lines().next().unwrap_or("")).unwrap_or("");
+            let head_commit = commits
+                .first()
+                .map(|c| c.lines().next().unwrap_or(""))
+                .unwrap_or("");
 
             if let Some(msg) = message {
                 tag_manager.create_annotated(

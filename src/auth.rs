@@ -1,7 +1,7 @@
+use crate::database::MugDb;
+use crate::error::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::error::Result;
-use crate::database::MugDb;
 
 /// Authentication credentials
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,18 +25,20 @@ impl AuthManager {
     }
 
     /// Store credentials for a remote
-    pub fn save_credentials(&self, remote: &str, token: &str, username: Option<&str>) -> Result<()> {
+    pub fn save_credentials(
+        &self,
+        remote: &str,
+        token: &str,
+        username: Option<&str>,
+    ) -> Result<()> {
         let creds = Credentials {
             token: token.to_string(),
             username: username.map(|u| u.to_string()),
             remote: remote.to_string(),
         };
 
-        self.db.set(
-            "auth",
-            remote,
-            &serde_json::to_string(&creds)?.into_bytes(),
-        )?;
+        self.db
+            .set("auth", remote, &serde_json::to_string(&creds)?.into_bytes())?;
         Ok(())
     }
 
@@ -84,9 +86,9 @@ pub struct TokenInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Permission {
-    Read(String),    // Read from repo
-    Write(String),   // Write to repo
-    Admin(String),   // Full access to repo
+    Read(String),  // Read from repo
+    Write(String), // Write to repo
+    Admin(String), // Full access to repo
 }
 
 impl ServerAuth {
@@ -98,20 +100,24 @@ impl ServerAuth {
 
     /// Add a token
     pub fn add_token(&mut self, token: String, username: String, permissions: Vec<Permission>) {
-        self.tokens.insert(token, TokenInfo { username, permissions });
+        self.tokens.insert(
+            token,
+            TokenInfo {
+                username,
+                permissions,
+            },
+        );
     }
 
     /// Verify token and check permission
     pub fn verify(&self, token: &str, repo: &str, action: &str) -> Result<bool> {
         match self.tokens.get(token) {
             Some(info) => {
-                let has_permission = info.permissions.iter().any(|p| {
-                    match p {
-                        Permission::Admin(r) => r == repo,
-                        Permission::Write(r) if action == "write" => r == repo,
-                        Permission::Read(r) if action == "read" => r == repo,
-                        _ => false,
-                    }
+                let has_permission = info.permissions.iter().any(|p| match p {
+                    Permission::Admin(r) => r == repo,
+                    Permission::Write(r) if action == "write" => r == repo,
+                    Permission::Read(r) if action == "read" => r == repo,
+                    _ => false,
                 });
 
                 Ok(has_permission)
@@ -141,7 +147,7 @@ mod tests {
     fn test_server_auth() {
         let mut auth = ServerAuth::new();
         let token = AuthManager::generate_token();
-        
+
         auth.add_token(
             token.clone(),
             "testuser".to_string(),

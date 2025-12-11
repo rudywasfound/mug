@@ -1,7 +1,7 @@
-use sha2::{Sha256, Digest};
-use std::path::Path;
-use std::fs;
 use crate::error::Result;
+use sha2::{Digest, Sha256};
+use std::fs;
+use std::path::Path;
 
 /// Hash a byte slice using SHA256
 pub fn hash_bytes(data: &[u8]) -> String {

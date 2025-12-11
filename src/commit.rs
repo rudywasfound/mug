@@ -1,8 +1,8 @@
-use serde::{Serialize, Deserialize};
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use crate::database::MugDb;
 use crate::error::Result;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// A commit in MUG
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,7 +63,9 @@ impl CommitLog {
 
     /// Get a commit by ID
     pub fn get_commit(&self, id: &str) -> Result<CommitMetadata> {
-        let data = self.db.get("COMMITS", id)?
+        let data = self
+            .db
+            .get("COMMITS", id)?
             .ok_or(crate::error::Error::CommitNotFound(id.to_string()))?;
         Ok(serde_json::from_slice(&data)?)
     }
@@ -104,12 +106,14 @@ mod tests {
         let db = MugDb::new(dir.path().join("db")).unwrap();
         let log = CommitLog::new(db);
 
-        let commit_id = log.create_commit(
-            "tree123".to_string(),
-            "Test User".to_string(),
-            "Initial commit".to_string(),
-            None,
-        ).unwrap();
+        let commit_id = log
+            .create_commit(
+                "tree123".to_string(),
+                "Test User".to_string(),
+                "Initial commit".to_string(),
+                None,
+            )
+            .unwrap();
 
         let commit = log.get_commit(&commit_id).unwrap();
         assert_eq!(commit.message, "Initial commit");
@@ -122,19 +126,23 @@ mod tests {
         let db = MugDb::new(dir.path().join("db")).unwrap();
         let log = CommitLog::new(db);
 
-        let id1 = log.create_commit(
-            "tree1".to_string(),
-            "User".to_string(),
-            "First".to_string(),
-            None,
-        ).unwrap();
+        let id1 = log
+            .create_commit(
+                "tree1".to_string(),
+                "User".to_string(),
+                "First".to_string(),
+                None,
+            )
+            .unwrap();
 
-        let id2 = log.create_commit(
-            "tree2".to_string(),
-            "User".to_string(),
-            "Second".to_string(),
-            Some(id1),
-        ).unwrap();
+        let id2 = log
+            .create_commit(
+                "tree2".to_string(),
+                "User".to_string(),
+                "Second".to_string(),
+                Some(id1),
+            )
+            .unwrap();
 
         let history = log.history(id2).unwrap();
         assert_eq!(history.len(), 2);

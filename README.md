@@ -309,6 +309,6 @@ We welcome contributions! Here's how you can help:
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0** - see [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU Lesser General Public License v3.0** - see [LICENSE](LICENSE) file for details.
 
-By contributing, you agree that your contributions will be licensed under its GPL V3 License.
+By contributing, you agree that your contributions will be licensed under its LGPL v3 License.

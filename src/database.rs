@@ -1,5 +1,5 @@
-use sled::{Db, Tree};
 use crate::error::{Error, Result};
+use sled::{Db, Tree};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -11,8 +11,7 @@ pub struct MugDb {
 
 impl MugDb {
     pub fn new(path: PathBuf) -> Result<Self> {
-        let db = sled::open(&path)
-            .map_err(|e| Error::Database(e.to_string()))?;
+        let db = sled::open(&path).map_err(|e| Error::Database(e.to_string()))?;
         Ok(MugDb { db: Arc::new(db) })
     }
 
@@ -46,7 +45,9 @@ impl MugDb {
 
     /// Get a value from a tree
     pub fn get<K: AsRef<[u8]>>(&self, tree_name: &str, key: K) -> Result<Option<Vec<u8>>> {
-        let tree = self.db.open_tree(tree_name)
+        let tree = self
+            .db
+            .open_tree(tree_name)
             .map_err(|e| Error::Database(e.to_string()))?;
         tree.get(key)
             .map_err(|e| Error::Database(e.to_string()))
@@ -54,8 +55,15 @@ impl MugDb {
     }
 
     /// Set a value in a tree
-    pub fn set<K: AsRef<[u8]>, V: AsRef<[u8]>>(&self, tree_name: &str, key: K, value: V) -> Result<()> {
-        let tree = self.db.open_tree(tree_name)
+    pub fn set<K: AsRef<[u8]>, V: AsRef<[u8]>>(
+        &self,
+        tree_name: &str,
+        key: K,
+        value: V,
+    ) -> Result<()> {
+        let tree = self
+            .db
+            .open_tree(tree_name)
             .map_err(|e| Error::Database(e.to_string()))?;
         tree.insert(key, value.as_ref())
             .map_err(|e| Error::Database(e.to_string()))?;
@@ -64,7 +72,9 @@ impl MugDb {
 
     /// Delete a value from a tree
     pub fn delete<K: AsRef<[u8]>>(&self, tree_name: &str, key: K) -> Result<()> {
-        let tree = self.db.open_tree(tree_name)
+        let tree = self
+            .db
+            .open_tree(tree_name)
             .map_err(|e| Error::Database(e.to_string()))?;
         tree.remove(key)
             .map_err(|e| Error::Database(e.to_string()))?;
@@ -72,8 +82,14 @@ impl MugDb {
     }
 
     /// Scan all entries in a tree
-    pub fn scan<K: AsRef<[u8]>>(&self, tree_name: &str, prefix: K) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
-        let tree = self.db.open_tree(tree_name)
+    pub fn scan<K: AsRef<[u8]>>(
+        &self,
+        tree_name: &str,
+        prefix: K,
+    ) -> Result<Vec<(Vec<u8>, Vec<u8>)>> {
+        let tree = self
+            .db
+            .open_tree(tree_name)
             .map_err(|e| Error::Database(e.to_string()))?;
         let mut results = Vec::new();
         for item in tree.scan_prefix(prefix) {
@@ -85,10 +101,11 @@ impl MugDb {
 
     /// Clear a tree
     pub fn clear_tree(&self, tree_name: &str) -> Result<()> {
-        let tree = self.db.open_tree(tree_name)
+        let tree = self
+            .db
+            .open_tree(tree_name)
             .map_err(|e| Error::Database(e.to_string()))?;
-        tree.clear()
-            .map_err(|e| Error::Database(e.to_string()))?;
+        tree.clear().map_err(|e| Error::Database(e.to_string()))?;
         Ok(())
     }
 }

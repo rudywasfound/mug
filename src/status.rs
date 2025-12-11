@@ -36,10 +36,10 @@ pub struct FileStatusInfo {
 }
 
 pub struct Status {
-    staged: HashMap<String, String>,      // path -> hash (ready to commit)
-    working: HashMap<String, String>,     // path -> hash (current state)
-    previous: HashMap<String, String>,    // path -> hash (last commit)
-    ignore_rules: IgnoreRules,             // patterns to exclude from tracking
+    staged: HashMap<String, String>,   // path -> hash (ready to commit)
+    working: HashMap<String, String>,  // path -> hash (current state)
+    previous: HashMap<String, String>, // path -> hash (last commit)
+    ignore_rules: IgnoreRules,         // patterns to exclude from tracking
 }
 
 impl Status {
@@ -141,7 +141,12 @@ impl Status {
     pub fn staged(&self) -> Vec<FileStatusInfo> {
         self.get_status()
             .into_iter()
-            .filter(|s| matches!(s.status, FileStatus::Added | FileStatus::Modified | FileStatus::Deleted))
+            .filter(|s| {
+                matches!(
+                    s.status,
+                    FileStatus::Added | FileStatus::Modified | FileStatus::Deleted
+                )
+            })
             .collect()
     }
 

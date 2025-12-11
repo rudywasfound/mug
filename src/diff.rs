@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use similar::TextDiff;
+use std::collections::HashMap;
 
 pub struct Diff {
     pub path: String,

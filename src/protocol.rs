@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
 use crate::commit::Commit;
 use crate::store::{Blob, Tree};
+use serde::{Deserialize, Serialize};
 
 /// Unified remote protocol for HTTP/HTTPS/SSH
-/// 
+///
 /// All transports use the same message format (JSON over HTTP/HTTPS, binary over SSH)
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

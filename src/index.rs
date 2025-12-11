@@ -206,9 +206,7 @@ mod tests {
         let mut index = Index::new(db).unwrap();
 
         // Empty path should fail
-        assert!(index
-            .add(String::new(), "abc123".to_string())
-            .is_err());
+        assert!(index.add(String::new(), "abc123".to_string()).is_err());
 
         // Empty hash should fail
         assert!(index.add("test.txt".to_string(), String::new()).is_err());
@@ -316,9 +314,7 @@ mod tests {
         index
             .add("test.txt".to_string(), "hash1".to_string())
             .unwrap();
-        index
-            .update_hash("test.txt", "hash2".to_string())
-            .unwrap();
+        index.update_hash("test.txt", "hash2".to_string()).unwrap();
 
         let entry = index.get("test.txt").unwrap();
         assert_eq!(entry.hash, "hash2");

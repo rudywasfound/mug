@@ -1,4 +1,3 @@
-
 use crate::error::Result;
 use crate::repo::Repository;
 
@@ -47,7 +46,9 @@ pub fn merge(
     let source_exists = commits.iter().any(|c| c.contains(source_branch));
 
     if !source_exists {
-        return Err(crate::error::Error::BranchNotFound(source_branch.to_string()));
+        return Err(crate::error::Error::BranchNotFound(
+            source_branch.to_string(),
+        ));
     }
 
     match strategy {
@@ -130,10 +131,16 @@ fn strategy_merge(
 ) -> Result<MergeResult> {
     let msg = match strategy {
         MergeStrategy::Ours => {
-            format!("Merged {} into {} (keeping current changes)", source, current)
+            format!(
+                "Merged {} into {} (keeping current changes)",
+                source, current
+            )
         }
         MergeStrategy::Theirs => {
-            format!("Merged {} into {} (accepting incoming changes)", source, current)
+            format!(
+                "Merged {} into {} (accepting incoming changes)",
+                source, current
+            )
         }
         _ => "Merge completed".to_string(),
     };

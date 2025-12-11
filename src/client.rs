@@ -1,9 +1,9 @@
+use crate::error::{Error, Result};
 use crate::protocol::{
-    PushResponse, PullResponse, FetchResponse, CloneResponse, PushRequest, PullRequest,
-    FetchRequest, CloneRequest,
+    CloneRequest, CloneResponse, FetchRequest, FetchResponse, PullRequest, PullResponse,
+    PushRequest, PushResponse,
 };
-use crate::remote::{Remote, Protocol};
-use crate::error::{Result, Error};
+use crate::remote::{Protocol, Remote};
 use crate::repo::Repository;
 use reqwest::Client;
 
@@ -59,8 +59,7 @@ impl RemoteClient {
             .collect();
 
         // Extract repo name from URL
-        let repo_name = extract_repo_name(&remote.url)
-            .unwrap_or_else(|| "repo".to_string());
+        let repo_name = extract_repo_name(&remote.url).unwrap_or_else(|| "repo".to_string());
 
         // Build request
         let request = PushRequest {
@@ -77,7 +76,10 @@ impl RemoteClient {
         match self.client.post(&url).json(&request).send().await {
             Ok(response) => match response.json::<PushResponse>().await {
                 Ok(resp) => Ok(resp),
-                Err(e) => Err(Error::Custom(format!("Failed to parse push response: {}", e))),
+                Err(e) => Err(Error::Custom(format!(
+                    "Failed to parse push response: {}",
+                    e
+                ))),
             },
             Err(e) => Err(Error::Custom(format!("Push failed: {}", e))),
         }
@@ -102,8 +104,7 @@ impl RemoteClient {
         let current_head = Some("HEAD".to_string());
 
         // Extract repo name
-        let repo_name = extract_repo_name(&remote.url)
-            .unwrap_or_else(|| "repo".to_string());
+        let repo_name = extract_repo_name(&remote.url).unwrap_or_else(|| "repo".to_string());
 
         // Build request
         let request = PullRequest {
@@ -117,7 +118,10 @@ impl RemoteClient {
         match self.client.get(&url).json(&request).send().await {
             Ok(response) => match response.json::<PullResponse>().await {
                 Ok(resp) => Ok(resp),
-                Err(e) => Err(Error::Custom(format!("Failed to parse pull response: {}", e))),
+                Err(e) => Err(Error::Custom(format!(
+                    "Failed to parse pull response: {}",
+                    e
+                ))),
             },
             Err(e) => Err(Error::Custom(format!("Pull failed: {}", e))),
         }
@@ -138,8 +142,7 @@ impl RemoteClient {
         }
 
         // Extract repo name
-        let repo_name = extract_repo_name(&remote.url)
-            .unwrap_or_else(|| "repo".to_string());
+        let repo_name = extract_repo_name(&remote.url).unwrap_or_else(|| "repo".to_string());
 
         // Build request
         let request = FetchRequest {
@@ -152,19 +155,17 @@ impl RemoteClient {
         match self.client.get(&url).json(&request).send().await {
             Ok(response) => match response.json::<FetchResponse>().await {
                 Ok(resp) => Ok(resp),
-                Err(e) => Err(Error::Custom(format!("Failed to parse fetch response: {}", e))),
+                Err(e) => Err(Error::Custom(format!(
+                    "Failed to parse fetch response: {}",
+                    e
+                ))),
             },
             Err(e) => Err(Error::Custom(format!("Fetch failed: {}", e))),
         }
     }
 
     /// Clone a repository
-    pub async fn clone(
-        &self,
-        remote: &Remote,
-        _dest: &str,
-        _token: &str,
-    ) -> Result<CloneResponse> {
+    pub async fn clone(&self, remote: &Remote, _dest: &str, _token: &str) -> Result<CloneResponse> {
         // Only HTTP(S) supported in this version
         if remote.protocol != Protocol::Http && remote.protocol != Protocol::Https {
             return Err(Error::Custom(
@@ -173,8 +174,7 @@ impl RemoteClient {
         }
 
         // Extract repo name
-        let repo_name = extract_repo_name(&remote.url)
-            .unwrap_or_else(|| "repo".to_string());
+        let repo_name = extract_repo_name(&remote.url).unwrap_or_else(|| "repo".to_string());
 
         // Build request
         let request = CloneRequest { repo: repo_name };
@@ -184,7 +184,10 @@ impl RemoteClient {
         match self.client.get(&url).json(&request).send().await {
             Ok(response) => match response.json::<CloneResponse>().await {
                 Ok(resp) => Ok(resp),
-                Err(e) => Err(Error::Custom(format!("Failed to parse clone response: {}", e))),
+                Err(e) => Err(Error::Custom(format!(
+                    "Failed to parse clone response: {}",
+                    e
+                ))),
             },
             Err(e) => Err(Error::Custom(format!("Clone failed: {}", e))),
         }
@@ -210,9 +213,7 @@ impl RemoteClient {
 pub async fn build_remote_client(remote: &Remote) -> Result<RemoteClient> {
     match remote.protocol {
         Protocol::Http | Protocol::Https => RemoteClient::new(),
-        Protocol::Ssh => Err(Error::Custom(
-            "SSH support coming in v1.1.0".to_string(),
-        )),
+        Protocol::Ssh => Err(Error::Custom("SSH support coming in v1.1.0".to_string())),
     }
 }
 

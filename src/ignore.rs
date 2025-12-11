@@ -55,11 +55,7 @@ impl IgnoreRules {
     /// Adds a pattern to the rules
     pub fn add_pattern(&mut self, pattern: &str) -> Result<()> {
         let negated = pattern.starts_with('!');
-        let pattern_str = if negated {
-            &pattern[1..]
-        } else {
-            pattern
-        };
+        let pattern_str = if negated { &pattern[1..] } else { pattern };
 
         let regex = self.pattern_to_regex(pattern_str)?;
 
@@ -76,9 +72,7 @@ impl IgnoreRules {
     /// Supports: *.ext, dir/, exact paths, ** for recursive
     fn pattern_to_regex(&self, pattern: &str) -> Result<Regex> {
         if pattern.is_empty() {
-            return Err(crate::error::Error::Custom(
-                "Empty pattern".to_string(),
-            ));
+            return Err(crate::error::Error::Custom("Empty pattern".to_string()));
         }
 
         // Convert glob to regex
@@ -103,9 +97,8 @@ impl IgnoreRules {
             format!("^{}(/.*)?$", regex::escape(pattern))
         };
 
-        Regex::new(&regex_pattern).map_err(|e| {
-            crate::error::Error::Custom(format!("Invalid regex pattern: {}", e))
-        })
+        Regex::new(&regex_pattern)
+            .map_err(|e| crate::error::Error::Custom(format!("Invalid regex pattern: {}", e)))
     }
 
     /// Checks if a path should be ignored

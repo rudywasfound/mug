@@ -80,15 +80,9 @@ impl Hook {
         }
 
         // Execute the hook
-        let output = Command::new(&self.path)
-            .args(args)
-            .output()
-            .map_err(|e| {
-                crate::error::Error::Custom(format!(
-                    "Failed to execute hook {}: {}",
-                    self.name, e
-                ))
-            })?;
+        let output = Command::new(&self.path).args(args).output().map_err(|e| {
+            crate::error::Error::Custom(format!("Failed to execute hook {}: {}", self.name, e))
+        })?;
 
         Ok(HookResult {
             success: output.status.success(),
@@ -174,7 +168,12 @@ impl HookManager {
     }
 
     /// Create a hook from a file
-    pub fn install_from_file(&self, name: &str, hook_type: HookType, file_path: &Path) -> Result<Hook> {
+    pub fn install_from_file(
+        &self,
+        name: &str,
+        hook_type: HookType,
+        file_path: &Path,
+    ) -> Result<Hook> {
         let script = fs::read_to_string(file_path)?;
         self.install(name, hook_type, &script)
     }
@@ -185,11 +184,7 @@ impl HookManager {
         let hook_path = self.hooks_dir.join(&hook_filename);
 
         if hook_path.exists() {
-            Ok(Some(Hook::new(
-                name.to_string(),
-                hook_type,
-                hook_path,
-            )))
+            Ok(Some(Hook::new(name.to_string(), hook_type, hook_path)))
         } else {
             Ok(None)
         }
@@ -216,11 +211,7 @@ impl HookManager {
 
                     if let Some((hook_type_str, name)) = parse_hook_filename(filename) {
                         if let Some(hook_type) = string_to_hook_type(hook_type_str) {
-                            hooks.push(Hook::new(
-                                name.to_string(),
-                                hook_type,
-                                path,
-                            ));
+                            hooks.push(Hook::new(name.to_string(), hook_type, path));
                         }
                     }
                 }
@@ -293,7 +284,9 @@ impl HookManager {
     /// Disable a hook
     pub fn disable_hook(&self, name: &str, hook_type: HookType) -> Result<()> {
         let hook_filename = format!("{}-{}.disabled", hook_type.name(), name);
-        let original_path = self.hooks_dir.join(format!("{}-{}", hook_type.name(), name));
+        let original_path = self
+            .hooks_dir
+            .join(format!("{}-{}", hook_type.name(), name));
         let disabled_path = self.hooks_dir.join(&hook_filename);
 
         if original_path.exists() {
@@ -305,8 +298,12 @@ impl HookManager {
 
     /// Enable a hook
     pub fn enable_hook(&self, name: &str, hook_type: HookType) -> Result<()> {
-        let disabled_path = self.hooks_dir.join(format!("{}-{}.disabled", hook_type.name(), name));
-        let original_path = self.hooks_dir.join(format!("{}-{}", hook_type.name(), name));
+        let disabled_path = self
+            .hooks_dir
+            .join(format!("{}-{}.disabled", hook_type.name(), name));
+        let original_path = self
+            .hooks_dir
+            .join(format!("{}-{}", hook_type.name(), name));
 
         if disabled_path.exists() {
             fs::rename(&disabled_path, &original_path)?;
@@ -320,7 +317,7 @@ impl HookManager {
 fn parse_hook_filename(filename: &str) -> Option<(&str, &str)> {
     // Hook filename format: "pre-commit-name" or "post-merge-name" etc.
     // We need to find the hook type (which contains dashes) and the name
-    
+
     // Remove .disabled suffix if present
     let clean_name = if filename.ends_with(".disabled") {
         &filename[..filename.len() - 9]
@@ -463,7 +460,7 @@ mod tests {
             .unwrap();
 
         manager.disable_hook("test", HookType::PreCommit).unwrap();
-        
+
         // Disabled hooks shouldn't appear in list
         assert_eq!(manager.list_hooks().unwrap().len(), 0);
     }

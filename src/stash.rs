@@ -166,9 +166,7 @@ mod tests {
             mode: 0o100644,
         };
 
-        let stash_id = manager
-            .create("main", "WIP: test", vec![entry])
-            .unwrap();
+        let stash_id = manager.create("main", "WIP: test", vec![entry]).unwrap();
 
         let stash = manager.get(&stash_id).unwrap();
         assert!(stash.is_some());
@@ -210,9 +208,7 @@ mod tests {
             mode: 0o100644,
         };
 
-        let stash_id = manager
-            .create("main", "WIP: test", vec![entry])
-            .unwrap();
+        let stash_id = manager.create("main", "WIP: test", vec![entry]).unwrap();
 
         manager.drop(&stash_id).unwrap();
         assert!(manager.get(&stash_id).unwrap().is_none());

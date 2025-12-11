@@ -1,10 +1,10 @@
-use actix_web::{web, App, HttpServer, HttpRequest, HttpResponse, middleware};
-use crate::protocol::{PushResponse, PullResponse, FetchResponse, CloneResponse};
 use crate::auth::ServerAuth;
 use crate::error::Result;
+use crate::protocol::{CloneResponse, FetchResponse, PullResponse, PushResponse};
 use crate::repo::Repository;
-use std::sync::{Arc, Mutex};
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, middleware, web};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 /// MUG server state
 pub struct ServerState {
@@ -39,29 +39,38 @@ async fn push_handler(
     // Extract and validate token
     let token = match extract_token(&req) {
         Some(t) => t,
-        None => return HttpResponse::Unauthorized().json(serde_json::json!({"error": "Missing authorization token"})),
+        None => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({"error": "Missing authorization token"}));
+        }
     };
 
     // Verify permission
     let auth = state.auth.lock().unwrap();
     match auth.verify(&token, &repo_name, "write") {
-        Ok(true) => {},
-        _ => return HttpResponse::Forbidden().json(serde_json::json!({"error": "Permission denied"})),
+        Ok(true) => {}
+        _ => {
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({"error": "Permission denied"}));
+        }
     }
     drop(auth);
 
     // Get or create repository
     let repo_path = state.repos_dir.join(&repo_name);
-    let _repo = match Repository::open(&repo_path) {
-        Ok(r) => r,
-        Err(_) => {
-            // Try to initialize if doesn't exist
-            match Repository::init(&repo_path) {
-                Ok(r) => r,
-                Err(e) => return HttpResponse::InternalServerError().json(serde_json::json!({"error": format!("Failed to initialize repo: {}", e)})),
+    let _repo =
+        match Repository::open(&repo_path) {
+            Ok(r) => r,
+            Err(_) => {
+                // Try to initialize if doesn't exist
+                match Repository::init(&repo_path) {
+                    Ok(r) => r,
+                    Err(e) => return HttpResponse::InternalServerError().json(
+                        serde_json::json!({"error": format!("Failed to initialize repo: {}", e)}),
+                    ),
+                }
             }
-        }
-    };
+        };
 
     // TODO: Process push
     // - Receive commits, blobs, trees
@@ -86,21 +95,30 @@ async fn pull_handler(
     // Extract and validate token
     let token = match extract_token(&req) {
         Some(t) => t,
-        None => return HttpResponse::Unauthorized().json(serde_json::json!({"error": "Missing authorization token"})),
+        None => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({"error": "Missing authorization token"}));
+        }
     };
 
     // Verify permission
     let auth = state.auth.lock().unwrap();
     match auth.verify(&token, &repo_name, "read") {
-        Ok(true) => {},
-        _ => return HttpResponse::Forbidden().json(serde_json::json!({"error": "Permission denied"})),
+        Ok(true) => {}
+        _ => {
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({"error": "Permission denied"}));
+        }
     }
     drop(auth);
 
     let repo_path = state.repos_dir.join(&repo_name);
     let _repo = match Repository::open(&repo_path) {
         Ok(r) => r,
-        Err(e) => return HttpResponse::NotFound().json(serde_json::json!({"error": format!("Repository not found: {}", e)})),
+        Err(e) => {
+            return HttpResponse::NotFound()
+                .json(serde_json::json!({"error": format!("Repository not found: {}", e)}));
+        }
     };
 
     // TODO: Gather commits, blobs, trees for branch
@@ -126,21 +144,30 @@ async fn fetch_handler(
     // Extract and validate token
     let token = match extract_token(&req) {
         Some(t) => t,
-        None => return HttpResponse::Unauthorized().json(serde_json::json!({"error": "Missing authorization token"})),
+        None => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({"error": "Missing authorization token"}));
+        }
     };
 
     // Verify permission
     let auth = state.auth.lock().unwrap();
     match auth.verify(&token, &repo_name, "read") {
-        Ok(true) => {},
-        _ => return HttpResponse::Forbidden().json(serde_json::json!({"error": "Permission denied"})),
+        Ok(true) => {}
+        _ => {
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({"error": "Permission denied"}));
+        }
     }
     drop(auth);
 
     let repo_path = state.repos_dir.join(&repo_name);
     let _repo = match Repository::open(&repo_path) {
         Ok(r) => r,
-        Err(e) => return HttpResponse::NotFound().json(serde_json::json!({"error": format!("Repository not found: {}", e)})),
+        Err(e) => {
+            return HttpResponse::NotFound()
+                .json(serde_json::json!({"error": format!("Repository not found: {}", e)}));
+        }
     };
 
     // TODO: Gather branches and their heads
@@ -162,21 +189,30 @@ async fn clone_handler(
     // Extract and validate token
     let token = match extract_token(&req) {
         Some(t) => t,
-        None => return HttpResponse::Unauthorized().json(serde_json::json!({"error": "Missing authorization token"})),
+        None => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({"error": "Missing authorization token"}));
+        }
     };
 
     // Verify permission
     let auth = state.auth.lock().unwrap();
     match auth.verify(&token, &repo_name, "read") {
-        Ok(true) => {},
-        _ => return HttpResponse::Forbidden().json(serde_json::json!({"error": "Permission denied"})),
+        Ok(true) => {}
+        _ => {
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({"error": "Permission denied"}));
+        }
     }
     drop(auth);
 
     let repo_path = state.repos_dir.join(&repo_name);
     let _repo = match Repository::open(&repo_path) {
         Ok(r) => r,
-        Err(e) => return HttpResponse::NotFound().json(serde_json::json!({"error": format!("Repository not found: {}", e)})),
+        Err(e) => {
+            return HttpResponse::NotFound()
+                .json(serde_json::json!({"error": format!("Repository not found: {}", e)}));
+        }
     };
 
     // TODO: Gather all commits, blobs, trees, and branches
@@ -197,11 +233,8 @@ async fn health() -> HttpResponse {
 /// Start HTTP server
 pub async fn run_server(repos_dir: PathBuf, host: &str, port: u16) -> Result<()> {
     let auth = Arc::new(Mutex::new(ServerAuth::new()));
-    
-    let state = web::Data::new(ServerState {
-        repos_dir,
-        auth,
-    });
+
+    let state = web::Data::new(ServerState { repos_dir, auth });
 
     println!("Starting MUG HTTP server on {}:{}", host, port);
 

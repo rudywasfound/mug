@@ -1,8 +1,8 @@
-use serde::{Serialize, Deserialize};
-use std::path::{Path, PathBuf};
-use std::fs;
 use crate::error::Result;
 use crate::hash;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// A single file snapshot in the content-addressable store
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,13 +128,11 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let store = ObjectStore::new(dir.path().join("objects")).unwrap();
 
-        let entries = vec![
-            TreeEntry {
-                name: "file.txt".to_string(),
-                hash: "abc123".to_string(),
-                is_dir: false,
-            },
-        ];
+        let entries = vec![TreeEntry {
+            name: "file.txt".to_string(),
+            hash: "abc123".to_string(),
+            is_dir: false,
+        }];
 
         let hash = store.store_tree(entries).unwrap();
         let tree = store.get_tree(&hash).unwrap();

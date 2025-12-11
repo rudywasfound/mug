@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
 use crate::database::MugDb;
 use crate::error::Result;
+use serde::{Deserialize, Serialize};
 
 /// A branch reference
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +107,9 @@ mod tests {
         let db = MugDb::new(dir.path().join("db")).unwrap();
         let manager = BranchManager::new(db);
 
-        manager.create_branch("main".to_string(), "commit123".to_string()).unwrap();
+        manager
+            .create_branch("main".to_string(), "commit123".to_string())
+            .unwrap();
         let branch = manager.get_branch("main").unwrap();
         assert!(branch.is_some());
         assert_eq!(branch.unwrap().commit_id, "commit123");
@@ -119,8 +121,12 @@ mod tests {
         let db = MugDb::new(dir.path().join("db")).unwrap();
         let manager = BranchManager::new(db);
 
-        manager.create_branch("main".to_string(), "commit1".to_string()).unwrap();
-        manager.create_branch("dev".to_string(), "commit2".to_string()).unwrap();
+        manager
+            .create_branch("main".to_string(), "commit1".to_string())
+            .unwrap();
+        manager
+            .create_branch("dev".to_string(), "commit2".to_string())
+            .unwrap();
 
         let branches = manager.list_branches().unwrap();
         assert_eq!(branches.len(), 2);

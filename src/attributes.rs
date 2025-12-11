@@ -97,7 +97,10 @@ impl Attributes {
             }
         }
 
-        self.patterns.push(AttributeRule { pattern, attributes });
+        self.patterns.push(AttributeRule {
+            pattern,
+            attributes,
+        });
 
         Ok(())
     }

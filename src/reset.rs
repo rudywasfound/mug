@@ -46,7 +46,9 @@ pub fn reset(repo: &Repository, mode: ResetMode, commit_id: Option<&str>) -> Res
     }
 
     if !target_found {
-        return Err(crate::error::Error::CommitNotFound(target_commit.to_string()));
+        return Err(crate::error::Error::CommitNotFound(
+            target_commit.to_string(),
+        ));
     }
 
     match mode {
@@ -74,7 +76,10 @@ pub fn reset(repo: &Repository, mode: ResetMode, commit_id: Option<&str>) -> Res
                 }
             }
 
-            eprintln!("Hard reset to {} (working directory cleaned)", target_commit);
+            eprintln!(
+                "Hard reset to {} (working directory cleaned)",
+                target_commit
+            );
         }
     }
 
