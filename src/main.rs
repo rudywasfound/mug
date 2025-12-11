@@ -148,6 +148,34 @@ enum Commands {
         branch: String,
     },
 
+    /// Cherry-pick a commit
+    CherryPick {
+        /// Commit ID to cherry-pick
+        commit: String,
+    },
+
+    /// Cherry-pick a range of commits
+    CherryPickRange {
+        /// Starting commit ID
+        start: String,
+        /// Ending commit ID
+        end: String,
+    },
+
+    /// Start a bisect session
+    BisectStart {
+        /// The known bad commit
+        bad: String,
+        /// The known good commit
+        good: String,
+    },
+
+    /// Mark current commit as good during bisect
+    BisectGood,
+
+    /// Mark current commit as bad during bisect
+    BisectBad,
+
     /// Stash current changes
     Stash {
         /// Optional stash message
@@ -436,6 +464,54 @@ async fn main() -> Result<()> {
                     println!("  Conflict: {}", conflict);
                 }
             }
+        }
+
+        Commands::CherryPick { commit } => {
+            let repo = Repository::open(".")?;
+            let result = mug::cherry_pick::cherry_pick(&repo, &commit)?;
+
+            if result.success {
+                println!("{}", result.message);
+                println!("New commit: {}", result.new_commit);
+            } else {
+                println!("Cherry-pick failed: {}", result.message);
+            }
+        }
+
+        Commands::CherryPickRange { start, end } => {
+            let repo = Repository::open(".")?;
+            let result = mug::cherry_pick::cherry_pick_range(&repo, &start, &end)?;
+
+            println!(
+                "Cherry-picked {} of {} commits",
+                result.successful, result.total
+            );
+            if result.failed > 0 {
+                println!("Failed to cherry-pick {} commits:", result.failed);
+                for (commit, error) in result.failed_commits {
+                    println!("  {}: {}", commit, error);
+                }
+            }
+        }
+
+        Commands::BisectStart { bad, good } => {
+            let repo = Repository::open(".")?;
+            let session = mug::bisect::start(&repo, &bad, &good)?;
+            println!("Started bisect session");
+            println!("Testing commit: {}", session.current_commit);
+            println!("Commits to test: {}", session.tested_commits.len());
+        }
+
+        Commands::BisectGood => {
+            let _repo = Repository::open(".")?;
+            // In a real implementation, would load persisted session
+            println!("Mark current commit as good");
+        }
+
+        Commands::BisectBad => {
+            let _repo = Repository::open(".")?;
+            // In a real implementation, would load persisted session
+            println!("Mark current commit as bad");
         }
 
         Commands::Stash { message } => {

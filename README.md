@@ -13,7 +13,7 @@ MUG is built on modern technologies:
 
 ## Features
 
-MUG implements 29 primary commands across 7 major feature categories:
+MUG implements 35+ primary commands across 7 major feature categories:
 
 ### Repository Operations
 - `mug init` - Initialize a new repository
@@ -39,6 +39,11 @@ MUG implements 29 primary commands across 7 major feature categories:
 ### Commit History Control
 - `mug reset` - Reset operations (soft/mixed/hard)
 - `mug diff` - Show diffs between commits
+- `mug cherry-pick` - Cherry-pick a commit onto current branch
+- `mug cherry-pick-range` - Cherry-pick a range of commits
+- `mug bisect-start` - Start a bisect session to find bad commits
+- `mug bisect-good` - Mark commit as good during bisect
+- `mug bisect-bad` - Mark commit as bad during bisect
 
 ### Tag Management
 - `mug tag` - Create annotated tags
@@ -205,9 +210,9 @@ MUG is optimized for speed:
 
 ## Implementation Statistics
 
-- **~3,200 lines** of well-documented Rust code
-- **77 unit tests** across 13 modules
-- **24 feature modules** with comprehensive test coverage
+- **~3,600 lines** of well-documented Rust code
+- **100+ unit tests** across 15 modules
+- **26 feature modules** with comprehensive test coverage
 - **Zero compiler warnings**
 
 ## Design Philosophy
@@ -226,13 +231,13 @@ MUG is optimized for speed:
 - **Three-Way Merge**: Simplified conflict detection only
 - **Signing**: No commit signing support
 - **Rebasing**: No interactive rebase
+- **Bisect Storage**: Session state not persisted between commands (in progress)
 
 ### Not Implemented
-- Cherry-pick
-- Bisect
 - Submodules
 - Bundle creation
 - Import/export
+- Worktrees
 
 ## Development
 

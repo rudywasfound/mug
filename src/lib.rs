@@ -1,6 +1,8 @@
 pub mod attributes;
 pub mod auth;
+pub mod bisect;
 pub mod branch;
+pub mod cherry_pick;
 pub mod client;
 pub mod commands;
 pub mod commit;
