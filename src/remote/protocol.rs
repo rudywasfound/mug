@@ -1,5 +1,5 @@
-use crate::commit::Commit;
-use crate::store::{Blob, Tree};
+use crate::core::commit::Commit;
+use crate::core::store::{Blob, Tree};
 use serde::{Deserialize, Serialize};
 
 /// Unified remote protocol for HTTP/HTTPS/SSH

@@ -1,7 +1,7 @@
-use crate::auth::ServerAuth;
-use crate::error::Result;
-use crate::protocol::{CloneResponse, FetchResponse, PullResponse, PushResponse};
-use crate::repo::Repository;
+use crate::core::auth::ServerAuth;
+use crate::core::error::Result;
+use crate::remote::protocol::{CloneResponse, FetchResponse, PullResponse, PushResponse};
+use crate::core::repo::Repository;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, middleware, web};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};

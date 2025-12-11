@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::database::MugDb;
-use crate::error::Result;
+use crate::core::database::MugDb;
+use crate::core::error::Result;
 
 /// Represents a single entry in the git index (staging area)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -51,12 +51,12 @@ impl Index {
     pub fn add(&mut self, path: String, hash: String) -> Result<()> {
         // Validate inputs
         if path.is_empty() {
-            return Err(crate::error::Error::Custom(
+            return Err(crate::core::error::Error::Custom(
                 "Path cannot be empty".to_string(),
             ));
         }
         if hash.is_empty() {
-            return Err(crate::error::Error::Custom(
+            return Err(crate::core::error::Error::Custom(
                 "Hash cannot be empty".to_string(),
             ));
         }
@@ -81,7 +81,7 @@ impl Index {
     /// Adds an executable file to the index with executable mode
     pub fn add_executable(&mut self, path: String, hash: String) -> Result<()> {
         if path.is_empty() || hash.is_empty() {
-            return Err(crate::error::Error::Custom(
+            return Err(crate::core::error::Error::Custom(
                 "Path and hash cannot be empty".to_string(),
             ));
         }

@@ -1,0 +1,23 @@
+pub mod attributes;
+pub mod auth;
+pub mod bisect;
+pub mod branch;
+pub mod cherry_pick;
+pub mod commit;
+pub mod config;
+pub mod database;
+pub mod diff;
+pub mod error;
+pub mod hash;
+pub mod hooks;
+pub mod ignore;
+pub mod index;
+pub mod merge;
+pub mod repo;
+pub mod reset;
+pub mod stash;
+pub mod status;
+pub mod store;
+pub mod tag;
+
+pub use error::{Error, Result};

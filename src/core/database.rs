@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::core::error::{Error, Result};
 use sled::{Db, Tree};
 use std::path::PathBuf;
 use std::sync::Arc;

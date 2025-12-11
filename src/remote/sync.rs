@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 
-use crate::client::build_remote_client;
-use crate::error::Result;
-use crate::repo::Repository;
+use crate::remote::client::build_remote_client;
+use crate::core::error::Result;
+use crate::core::repo::Repository;
 
 /// Represents a remote repository with its objects
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,7 +66,7 @@ impl SyncManager {
         // Get remote configuration
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
         let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
-            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+            crate::core::error::Error::Custom(format!("Remote '{}' not found", remote_name))
         })?;
 
         // Get current commits
@@ -106,7 +106,7 @@ impl SyncManager {
         // Get remote configuration
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
         let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
-            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+            crate::core::error::Error::Custom(format!("Remote '{}' not found", remote_name))
         })?;
 
         // Build HTTP client and send pull
@@ -138,7 +138,7 @@ impl SyncManager {
     pub async fn fetch(&self, remote_name: &str) -> Result<SyncResult> {
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
         let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
-            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+            crate::core::error::Error::Custom(format!("Remote '{}' not found", remote_name))
         })?;
 
         // Build HTTP client and send fetch
@@ -196,7 +196,7 @@ impl SyncManager {
     pub fn get_remote_info(&self, remote_name: &str) -> Result<RemoteRef> {
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
         let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
-            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+            crate::core::error::Error::Custom(format!("Remote '{}' not found", remote_name))
         })?;
 
         // Get local branches and commits
@@ -215,7 +215,7 @@ impl SyncManager {
     pub async fn test_connection(&self, remote_name: &str) -> Result<bool> {
         let remote_manager = crate::remote::RemoteManager::new(self.repo.get_db().clone());
         let remote = remote_manager.get(remote_name)?.ok_or_else(|| {
-            crate::error::Error::Custom(format!("Remote '{}' not found", remote_name))
+            crate::core::error::Error::Custom(format!("Remote '{}' not found", remote_name))
         })?;
 
         // Attempt actual HTTP connection

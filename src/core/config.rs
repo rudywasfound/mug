@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
-use crate::error::Result;
+use crate::core::error::Result;
 
 /// Repository configuration manager
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,7 +37,7 @@ impl Config {
         if config_path.exists() {
             let content = fs::read_to_string(&config_path)?;
             serde_json::from_str(&content)
-                .map_err(|e| crate::error::Error::Custom(format!("Failed to parse config: {}", e)))
+                .map_err(|e| crate::core::error::Error::Custom(format!("Failed to parse config: {}", e)))
         } else {
             Ok(Config::new())
         }

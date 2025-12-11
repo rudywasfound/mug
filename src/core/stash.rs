@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::database::MugDb;
-use crate::error::Result;
-use crate::index::IndexEntry;
+use crate::core::database::MugDb;
+use crate::core::error::Result;
+use crate::core::index::IndexEntry;
 
 /// A stashed set of changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,7 +102,7 @@ impl StashManager {
                 eprintln!("Applied stash {}: {}", stash_id, stash.message);
                 Ok(())
             }
-            None => Err(crate::error::Error::Custom(format!(
+            None => Err(crate::core::error::Error::Custom(format!(
                 "Stash {} not found",
                 stash_id
             ))),

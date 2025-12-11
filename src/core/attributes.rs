@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::error::Result;
+use crate::core::error::Result;
 
 /// File attributes manager (.mugattributes)
 /// Manages special handling for files (line endings, merging strategies, etc.)

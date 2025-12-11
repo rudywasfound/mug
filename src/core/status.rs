@@ -3,10 +3,10 @@ use std::path::Path;
 
 use walkdir::WalkDir;
 
-use crate::error::Result;
-use crate::hash;
-use crate::ignore::IgnoreRules;
-use crate::index::Index;
+use crate::core::error::Result;
+use crate::core::hash;
+use crate::core::ignore::IgnoreRules;
+use crate::core::index::Index;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FileStatus {

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::database::MugDb;
-use crate::error::Result;
+use crate::core::database::MugDb;
+use crate::core::error::Result;
 
 /// A Git-like tag for marking commits
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,7 +53,7 @@ impl TagManager {
     /// Create a new tag pointing to a commit
     pub fn create(&self, name: String, commit_id: String) -> Result<()> {
         if self.get(&name)?.is_some() {
-            return Err(crate::error::Error::Custom(format!(
+            return Err(crate::core::error::Error::Custom(format!(
                 "Tag '{}' already exists",
                 name
             )));

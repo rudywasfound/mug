@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::core::error::Result;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::Path;

@@ -1,5 +1,5 @@
-use crate::database::MugDb;
-use crate::error::Result;
+use crate::core::database::MugDb;
+use crate::core::error::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -66,7 +66,7 @@ impl CommitLog {
         let data = self
             .db
             .get("COMMITS", id)?
-            .ok_or(crate::error::Error::CommitNotFound(id.to_string()))?;
+            .ok_or(crate::core::error::Error::CommitNotFound(id.to_string()))?;
         Ok(serde_json::from_slice(&data)?)
     }
 

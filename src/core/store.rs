@@ -1,5 +1,5 @@
-use crate::error::Result;
-use crate::hash;
+use crate::core::error::Result;
+use crate::core::hash;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};

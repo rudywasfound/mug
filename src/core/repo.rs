@@ -3,15 +3,15 @@ use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 
-use crate::branch::BranchManager;
-use crate::commit::CommitLog;
-use crate::database::MugDb;
-use crate::error::{Error, Result};
-use crate::hash;
-use crate::ignore::IgnoreRules;
-use crate::index::Index;
-use crate::status::Status;
-use crate::store::{ObjectStore, TreeEntry};
+use crate::core::branch::BranchManager;
+use crate::core::commit::CommitLog;
+use crate::core::database::MugDb;
+use crate::core::error::{Error, Result};
+use crate::core::hash;
+use crate::core::ignore::IgnoreRules;
+use crate::core::index::Index;
+use crate::core::status::Status;
+use crate::core::store::{ObjectStore, TreeEntry};
 
 pub struct Repository {
     root: PathBuf,

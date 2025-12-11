@@ -1,10 +1,10 @@
-use crate::error::{Error, Result};
-use crate::protocol::{
+use crate::core::error::{Error, Result};
+use crate::remote::protocol::{
     CloneRequest, CloneResponse, FetchRequest, FetchResponse, PullRequest, PullResponse,
     PushRequest, PushResponse,
 };
 use crate::remote::{Protocol, Remote};
-use crate::repo::Repository;
+use crate::core::repo::Repository;
 use reqwest::Client;
 
 /// Remote client for push/pull/fetch/clone operations with HTTP transport
@@ -48,7 +48,7 @@ impl RemoteClient {
         // Convert string commit IDs to Commit objects (placeholder)
         let commits = commits_str
             .into_iter()
-            .map(|id| crate::commit::Commit {
+            .map(|id| crate::core::commit::Commit {
                 id: id.clone(),
                 tree_hash: String::new(),
                 parent: None,

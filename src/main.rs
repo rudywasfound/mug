@@ -1,8 +1,8 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use mug::error::Result;
-use mug::repo::Repository;
+use mug::core::error::Result;
+use mug::core::repo::Repository;
 
 #[derive(Parser)]
 #[command(name = "mug")]
@@ -305,7 +305,7 @@ async fn main() -> Result<()> {
         Commands::Commit { message, author } => {
             let repo = Repository::open(".")?;
             let commit_id = repo.commit(author, message)?;
-            println!("Committed: {}", mug::hash::short_hash(&commit_id));
+            println!("Committed: {}", mug::core::hash::short_hash(&commit_id));
         }
 
         Commands::Log { oneline } => {
@@ -393,8 +393,8 @@ async fn main() -> Result<()> {
 
         Commands::Reset { mode, commit } => {
             let repo = Repository::open(".")?;
-            let reset_mode = mug::reset::ResetMode::from_str(&mode)?;
-            mug::reset::reset(&repo, reset_mode, commit.as_deref())?;
+            let reset_mode = mug::core::reset::ResetMode::from_str(&mode)?;
+            mug::core::reset::reset(&repo, reset_mode, commit.as_deref())?;
             println!(
                 "Reset {} to {:?}",
                 mode,
@@ -404,7 +404,7 @@ async fn main() -> Result<()> {
 
         Commands::Tag { name, message } => {
             let repo = Repository::open(".")?;
-            let tag_manager = mug::tag::TagManager::new(repo.get_db().clone());
+            let tag_manager = mug::core::tag::TagManager::new(repo.get_db().clone());
 
             // Get current HEAD commit
             let commits = repo.log()?;
@@ -429,7 +429,7 @@ async fn main() -> Result<()> {
 
         Commands::Tags => {
             let repo = Repository::open(".")?;
-            let tag_manager = mug::tag::TagManager::new(repo.get_db().clone());
+            let tag_manager = mug::core::tag::TagManager::new(repo.get_db().clone());
             let tags = tag_manager.list()?;
 
             if tags.is_empty() {
@@ -447,14 +447,14 @@ async fn main() -> Result<()> {
 
         Commands::DeleteTag { name } => {
             let repo = Repository::open(".")?;
-            let tag_manager = mug::tag::TagManager::new(repo.get_db().clone());
+            let tag_manager = mug::core::tag::TagManager::new(repo.get_db().clone());
             tag_manager.delete(&name)?;
             println!("Deleted tag: {}", name);
         }
 
         Commands::Merge { branch } => {
             let repo = Repository::open(".")?;
-            let result = mug::merge::merge(&repo, &branch, mug::merge::MergeStrategy::Simple)?;
+            let result = mug::core::merge::merge(&repo, &branch, mug::core::merge::MergeStrategy::Simple)?;
 
             if result.merged {
                 println!("{}", result.message);
@@ -468,7 +468,7 @@ async fn main() -> Result<()> {
 
         Commands::CherryPick { commit } => {
             let repo = Repository::open(".")?;
-            let result = mug::cherry_pick::cherry_pick(&repo, &commit)?;
+            let result = mug::core::cherry_pick::cherry_pick(&repo, &commit)?;
 
             if result.success {
                 println!("{}", result.message);
@@ -480,7 +480,7 @@ async fn main() -> Result<()> {
 
         Commands::CherryPickRange { start, end } => {
             let repo = Repository::open(".")?;
-            let result = mug::cherry_pick::cherry_pick_range(&repo, &start, &end)?;
+            let result = mug::core::cherry_pick::cherry_pick_range(&repo, &start, &end)?;
 
             println!(
                 "Cherry-picked {} of {} commits",
@@ -496,7 +496,7 @@ async fn main() -> Result<()> {
 
         Commands::BisectStart { bad, good } => {
             let repo = Repository::open(".")?;
-            let session = mug::bisect::start(&repo, &bad, &good)?;
+            let session = mug::core::bisect::start(&repo, &bad, &good)?;
             println!("Started bisect session");
             println!("Testing commit: {}", session.current_commit);
             println!("Commits to test: {}", session.tested_commits.len());
@@ -516,11 +516,11 @@ async fn main() -> Result<()> {
 
         Commands::Stash { message } => {
             let repo = Repository::open(".")?;
-            let stash_manager = mug::stash::StashManager::new(repo.get_db().clone());
+            let stash_manager = mug::core::stash::StashManager::new(repo.get_db().clone());
             let current_branch = repo.current_branch()?.unwrap_or("main".to_string());
             let msg = message.unwrap_or("WIP: stashed changes".to_string());
 
-            let index = mug::index::Index::new(repo.get_db().clone())?;
+            let index = mug::core::index::Index::new(repo.get_db().clone())?;
             let entries = index.entries();
 
             let stash_id = stash_manager.create(&current_branch, &msg, entries)?;
@@ -529,7 +529,7 @@ async fn main() -> Result<()> {
 
         Commands::StashPop => {
             let repo = Repository::open(".")?;
-            let stash_manager = mug::stash::StashManager::new(repo.get_db().clone());
+            let stash_manager = mug::core::stash::StashManager::new(repo.get_db().clone());
 
             match stash_manager.latest()? {
                 Some(stash) => {
@@ -544,7 +544,7 @@ async fn main() -> Result<()> {
 
         Commands::StashList => {
             let repo = Repository::open(".")?;
-            let stash_manager = mug::stash::StashManager::new(repo.get_db().clone());
+            let stash_manager = mug::core::stash::StashManager::new(repo.get_db().clone());
             let stashes = stash_manager.list()?;
 
             if stashes.is_empty() {
@@ -592,7 +592,7 @@ async fn main() -> Result<()> {
 
         Commands::Push { remote, branch } => {
             let repo = Repository::open(".")?;
-            let sync_manager = mug::sync::SyncManager::new(repo);
+            let sync_manager = mug::remote::sync::SyncManager::new(repo);
             let result = sync_manager.push(&remote, &branch).await?;
 
             if result.success {
@@ -604,7 +604,7 @@ async fn main() -> Result<()> {
 
         Commands::Pull { remote, branch } => {
             let repo = Repository::open(".")?;
-            let sync_manager = mug::sync::SyncManager::new(repo);
+            let sync_manager = mug::remote::sync::SyncManager::new(repo);
             let result = sync_manager.pull(&remote, &branch).await?;
 
             if result.success {
@@ -616,7 +616,7 @@ async fn main() -> Result<()> {
 
         Commands::Fetch { remote } => {
             let repo = Repository::open(".")?;
-            let sync_manager = mug::sync::SyncManager::new(repo);
+            let sync_manager = mug::remote::sync::SyncManager::new(repo);
             let result = sync_manager.fetch(&remote).await?;
 
             if result.success {
@@ -627,7 +627,7 @@ async fn main() -> Result<()> {
         }
 
         Commands::Clone { url, destination } => {
-            mug::sync::SyncManager::clone(&url, destination.as_deref())?;
+            mug::remote::sync::SyncManager::clone(&url, destination.as_deref())?;
         }
     }
 

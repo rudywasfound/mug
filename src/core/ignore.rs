@@ -2,7 +2,7 @@ use regex::Regex;
 use std::fs;
 use std::path::Path;
 
-use crate::error::Result;
+use crate::core::error::Result;
 
 /// Manages .mugignore patterns for excluding files from version control
 #[derive(Debug, Clone)]
@@ -72,7 +72,7 @@ impl IgnoreRules {
     /// Supports: *.ext, dir/, exact paths, ** for recursive
     fn pattern_to_regex(&self, pattern: &str) -> Result<Regex> {
         if pattern.is_empty() {
-            return Err(crate::error::Error::Custom("Empty pattern".to_string()));
+            return Err(crate::core::error::Error::Custom("Empty pattern".to_string()));
         }
 
         // Convert glob to regex
@@ -98,7 +98,7 @@ impl IgnoreRules {
         };
 
         Regex::new(&regex_pattern)
-            .map_err(|e| crate::error::Error::Custom(format!("Invalid regex pattern: {}", e)))
+            .map_err(|e| crate::core::error::Error::Custom(format!("Invalid regex pattern: {}", e)))
     }
 
     /// Checks if a path should be ignored

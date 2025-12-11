@@ -1,5 +1,5 @@
-use crate::error::Result;
-use crate::repo::Repository;
+use crate::core::error::Result;
+use crate::core::repo::Repository;
 
 /// Merge strategy for combining branches
 #[derive(Debug, Clone, Copy)]
@@ -46,7 +46,7 @@ pub fn merge(
     let source_exists = commits.iter().any(|c| c.contains(source_branch));
 
     if !source_exists {
-        return Err(crate::error::Error::BranchNotFound(
+        return Err(crate::core::error::Error::BranchNotFound(
             source_branch.to_string(),
         ));
     }
@@ -152,7 +152,7 @@ fn strategy_merge(
     })
 }
 
-use crate::index::Index;
+use crate::core::index::Index;
 
 #[cfg(test)]
 mod tests {

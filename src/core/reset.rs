@@ -1,9 +1,9 @@
 use std::fs;
 use std::path::Path;
 
-use crate::error::Result;
-use crate::index::Index;
-use crate::repo::Repository;
+use crate::core::error::Result;
+use crate::core::index::Index;
+use crate::core::repo::Repository;
 
 /// Reset mode determines what gets reset
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,7 +22,7 @@ impl ResetMode {
             "soft" => Ok(ResetMode::Soft),
             "mixed" => Ok(ResetMode::Mixed),
             "hard" => Ok(ResetMode::Hard),
-            _ => Err(crate::error::Error::Custom(format!(
+            _ => Err(crate::core::error::Error::Custom(format!(
                 "Unknown reset mode: {}",
                 s
             ))),
@@ -46,7 +46,7 @@ pub fn reset(repo: &Repository, mode: ResetMode, commit_id: Option<&str>) -> Res
     }
 
     if !target_found {
-        return Err(crate::error::Error::CommitNotFound(
+        return Err(crate::core::error::Error::CommitNotFound(
             target_commit.to_string(),
         ));
     }

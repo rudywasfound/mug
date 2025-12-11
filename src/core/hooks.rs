@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::error::Result;
+use crate::core::error::Result;
 
 /// Hook types supported
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -65,7 +65,7 @@ impl Hook {
         }
 
         if !self.path.exists() {
-            return Err(crate::error::Error::Custom(format!(
+            return Err(crate::core::error::Error::Custom(format!(
                 "Hook not found: {}",
                 self.path.display()
             )));
@@ -81,7 +81,7 @@ impl Hook {
 
         // Execute the hook
         let output = Command::new(&self.path).args(args).output().map_err(|e| {
-            crate::error::Error::Custom(format!("Failed to execute hook {}: {}", self.name, e))
+            crate::core::error::Error::Custom(format!("Failed to execute hook {}: {}", self.name, e))
         })?;
 
         Ok(HookResult {
@@ -271,7 +271,7 @@ impl HookManager {
 
         for result in results {
             if !result.is_success() {
-                return Err(crate::error::Error::Custom(format!(
+                return Err(crate::core::error::Error::Custom(format!(
                     "Hook failed: {}",
                     result.stderr
                 )));

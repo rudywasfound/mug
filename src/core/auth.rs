@@ -1,5 +1,5 @@
-use crate::database::MugDb;
-use crate::error::Result;
+use crate::core::database::MugDb;
+use crate::core::error::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

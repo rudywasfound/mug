@@ -4,8 +4,8 @@ use std::path::Path;
 use rayon::prelude::*;
 use regex::Regex;
 
-use crate::error::Result;
-use crate::repo::Repository;
+use crate::core::error::Result;
+use crate::core::repo::Repository;
 
 /// Remove files from repository and working directory
 pub fn remove_files(repo: &Repository, paths: &[&str]) -> Result<()> {
@@ -36,7 +36,7 @@ pub fn restore_files(repo: &Repository, paths: &[&str]) -> Result<()> {
 /// Search files for pattern (parallel grep)
 pub fn grep(repo_path: &Path, pattern: &str) -> Result<Vec<String>> {
     let regex = Regex::new(pattern)
-        .map_err(|e| crate::error::Error::Custom(format!("Invalid regex: {}", e)))?;
+        .map_err(|e| crate::core::error::Error::Custom(format!("Invalid regex: {}", e)))?;
 
     let results: Vec<String> = walkdir::WalkDir::new(repo_path)
         .into_iter()
@@ -85,7 +85,7 @@ pub fn show_commit(repo: &Repository, commit_id: &str) -> Result<String> {
             return Ok(entry);
         }
     }
-    Err(crate::error::Error::Custom(format!(
+    Err(crate::core::error::Error::Custom(format!(
         "Commit {} not found",
         commit_id
     )))

@@ -1,5 +1,5 @@
-use crate::database::MugDb;
-use crate::error::Result;
+use crate::core::database::MugDb;
+use crate::core::error::Result;
 use serde::{Deserialize, Serialize};
 
 /// Remote configuration
@@ -48,7 +48,7 @@ impl RemoteManager {
     /// Add a new remote
     pub fn add(&self, name: &str, url: &str) -> Result<()> {
         if self.get(name)?.is_some() {
-            return Err(crate::error::Error::Custom(format!(
+            return Err(crate::core::error::Error::Custom(format!(
                 "Remote '{}' already exists",
                 name
             )));
@@ -105,7 +105,7 @@ impl RemoteManager {
     pub fn update_url(&self, name: &str, new_url: &str) -> Result<()> {
         let mut remote = self
             .get(name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", name)))?;
+            .ok_or_else(|| crate::core::error::Error::Custom(format!("Remote '{}' not found", name)))?;
 
         remote.url = new_url.to_string();
         remote.protocol = Protocol::from_url(new_url);
@@ -119,7 +119,7 @@ impl RemoteManager {
     pub fn set_fetch(&self, name: &str, enabled: bool) -> Result<()> {
         let mut remote = self
             .get(name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", name)))?;
+            .ok_or_else(|| crate::core::error::Error::Custom(format!("Remote '{}' not found", name)))?;
 
         remote.fetch = enabled;
 
@@ -132,7 +132,7 @@ impl RemoteManager {
     pub fn set_push(&self, name: &str, enabled: bool) -> Result<()> {
         let mut remote = self
             .get(name)?
-            .ok_or_else(|| crate::error::Error::Custom(format!("Remote '{}' not found", name)))?;
+            .ok_or_else(|| crate::core::error::Error::Custom(format!("Remote '{}' not found", name)))?;
 
         remote.push = enabled;
 
@@ -144,7 +144,7 @@ impl RemoteManager {
     /// Set default remote (origin)
     pub fn set_default(&self, name: &str) -> Result<()> {
         if self.get(name)?.is_none() {
-            return Err(crate::error::Error::Custom(format!(
+            return Err(crate::core::error::Error::Custom(format!(
                 "Remote '{}' not found",
                 name
             )));

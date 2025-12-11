@@ -1,5 +1,5 @@
-use crate::error::{Error, Result};
-use crate::repo::Repository;
+use crate::core::error::{Error, Result};
+use crate::core::repo::Repository;
 
 /// Cherry-pick a commit onto the current branch
 pub fn cherry_pick(repo: &Repository, commit_id: &str) -> Result<CherryPickResult> {

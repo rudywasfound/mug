@@ -1,5 +1,5 @@
-use crate::error::{Error, Result};
-use crate::repo::Repository;
+use crate::core::error::{Error, Result};
+use crate::core::repo::Repository;
 
 /// Bisect session state
 #[derive(Debug, Clone)]
