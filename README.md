@@ -285,7 +285,7 @@ cargo clippy
 
 ## Security
 
-If you discover a security vulnerability, please email security@example.com with:
+If you discover a security vulnerability, please email atsharma623@gmail.com with:
 - Description of the vulnerability
 - Steps to reproduce
 - Potential impact
