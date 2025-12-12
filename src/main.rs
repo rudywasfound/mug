@@ -43,9 +43,9 @@ enum Commands {
         #[arg(short, long)]
         message: String,
 
-        /// Author name
-        #[arg(short, long, default_value = "MUG User")]
-        author: String,
+        /// Author name (overrides config user.name)
+        #[arg(short, long)]
+        author: Option<String>,
     },
 
     /// Show commit history
@@ -148,6 +148,16 @@ enum Commands {
         branch: String,
     },
 
+    /// Rebase current branch onto another branch
+    Rebase {
+        /// Target branch to rebase onto
+        target: String,
+
+        /// Use interactive rebase
+        #[arg(short, long)]
+        interactive: bool,
+    },
+
     /// Cherry-pick a commit
     CherryPick {
         /// Commit ID to cherry-pick
@@ -241,6 +251,48 @@ enum Commands {
         /// Path to create MUG repository
         mug_path: PathBuf,
     },
+
+    /// Configure repository settings
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
+
+    /// Verify repository integrity
+    Verify,
+
+    /// Garbage collection - optimize repository
+    Gc,
+
+    /// Show reference history
+    Reflog {
+        /// Optional ref to show history for
+        reference: Option<String>,
+    },
+
+    /// Update reference (advanced)
+    UpdateRef {
+        /// Reference name
+        reference: String,
+
+        /// New commit/object hash
+        value: String,
+    },
+
+    /// Start HTTP server for remote access
+    Serve {
+        /// Host to bind to
+        #[arg(long, default_value = "0.0.0.0")]
+        host: String,
+
+        /// Port to bind to
+        #[arg(long, default_value = "3000")]
+        port: u16,
+
+        /// Base directory for repositories
+        #[arg(long, default_value = ".")]
+        repos: PathBuf,
+    },
 }
 
 #[derive(Subcommand)]
@@ -273,6 +325,24 @@ enum RemoteAction {
     },
 }
 
+#[derive(Subcommand)]
+enum ConfigAction {
+    /// Set configuration value
+    Set {
+        /// Config key (user.name, user.email, etc.)
+        key: String,
+        /// Config value
+        value: String,
+    },
+    /// Get configuration value
+    Get {
+        /// Config key
+        key: String,
+    },
+    /// List all configuration
+    List,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -281,6 +351,7 @@ async fn main() -> Result<()> {
         Commands::Init { path } => {
             let _repo = Repository::init(&path)?;
             println!("Initialized empty MUG repository in {:?}", path);
+            println!("Happy Mugging!");
         }
 
         Commands::Add { path } => {
@@ -292,12 +363,14 @@ async fn main() -> Result<()> {
                 repo.add(&path)?;
                 println!("Staged {}", path);
             }
+            println!("Happy Mugging!");
         }
 
         Commands::Remove { path } => {
             let repo = Repository::open(".")?;
             repo.remove(&path)?;
             println!("Removed {} from staging", path);
+            println!("Happy Mugging!");
         }
 
         Commands::Status => {
@@ -309,12 +382,23 @@ async fn main() -> Result<()> {
                 repo.current_branch()?.unwrap_or("main".to_string())
             );
             println!("Working directory status displayed");
+            println!("Happy Mugging!");
         }
 
         Commands::Commit { message, author } => {
             let repo = Repository::open(".")?;
-            let commit_id = repo.commit(author, message)?;
+            
+            // Use provided author or fallback to config
+            let author_name = if let Some(a) = author {
+                a
+            } else {
+                let config = mug::core::config::Config::load(std::path::Path::new("."))?;
+                config.get_user_name()
+            };
+            
+            let commit_id = repo.commit(author_name, message)?;
             println!("Committed: {}", mug::core::hash::short_hash(&commit_id));
+            println!("Happy Mugging!");
         }
 
         Commands::Log { oneline } => {
@@ -327,6 +411,7 @@ async fn main() -> Result<()> {
                     println!("{}", commit);
                 }
             }
+            
         }
 
         Commands::Show { commit } => {
@@ -344,12 +429,14 @@ async fn main() -> Result<()> {
                     println!("{}", result);
                 }
             }
+            println!("Happy Mugging!");
         }
 
         Commands::Branch { name } => {
             let repo = Repository::open(".")?;
             repo.create_branch(name.clone())?;
             println!("Created branch: {}", name);
+            println!("Happy Mugging!");
         }
 
         Commands::Branches => {
@@ -364,12 +451,14 @@ async fn main() -> Result<()> {
                 };
                 println!("{}{}", marker, branch);
             }
+            println!("Happy Mugging!");
         }
 
         Commands::Checkout { branch } => {
             let repo = Repository::open(".")?;
             repo.checkout(branch.clone())?;
             println!("Switched to branch: {}", branch);
+            println!("Happy Mugging!");
         }
 
         Commands::Rm { paths } => {
@@ -377,12 +466,14 @@ async fn main() -> Result<()> {
             let path_refs: Vec<&str> = paths.iter().map(|s| s.as_str()).collect();
             mug::commands::remove_files(&repo, &path_refs)?;
             println!("Removed {} files", paths.len());
+            println!("Happy Mugging!");
         }
 
         Commands::Mv { from, to } => {
             let repo = Repository::open(".")?;
             mug::commands::mv_file(&repo, &from, &to)?;
             println!("Moved {} to {}", from, to);
+            println!("Happy Mugging!");
         }
 
         Commands::Restore { paths } => {
@@ -390,6 +481,7 @@ async fn main() -> Result<()> {
             let path_refs: Vec<&str> = paths.iter().map(|s| s.as_str()).collect();
             mug::commands::restore_files(&repo, &path_refs)?;
             println!("Restored {} files", paths.len());
+            println!("Happy Mugging!");
         }
 
         Commands::Diff { from, to } => {
@@ -398,6 +490,7 @@ async fn main() -> Result<()> {
             for diff in diffs {
                 println!("{}", diff);
             }
+            println!("Happy Mugging!");
         }
 
         Commands::Reset { mode, commit } => {
@@ -409,6 +502,7 @@ async fn main() -> Result<()> {
                 mode,
                 commit.unwrap_or("HEAD".to_string())
             );
+            println!("Happy Mugging!");
         }
 
         Commands::Tag { name, message } => {
@@ -434,6 +528,7 @@ async fn main() -> Result<()> {
             }
 
             println!("Created tag: {}", name);
+            println!("Happy Mugging!");
         }
 
         Commands::Tags => {
@@ -452,6 +547,7 @@ async fn main() -> Result<()> {
                     }
                 }
             }
+            println!("Happy Mugging!");
         }
 
         Commands::DeleteTag { name } => {
@@ -459,6 +555,7 @@ async fn main() -> Result<()> {
             let tag_manager = mug::core::tag::TagManager::new(repo.get_db().clone());
             tag_manager.delete(&name)?;
             println!("Deleted tag: {}", name);
+            println!("Happy Mugging!");
         }
 
         Commands::Merge { branch } => {
@@ -473,6 +570,29 @@ async fn main() -> Result<()> {
                     println!("  Conflict: {}", conflict);
                 }
             }
+            println!("Happy Mugging!");
+        }
+
+        Commands::Rebase { target, interactive } => {
+            let repo = Repository::open(".")?;
+            let strategy = if interactive {
+                mug::core::rebase::RebaseStrategy::Interactive
+            } else {
+                mug::core::rebase::RebaseStrategy::Rebase
+            };
+            let result = mug::core::rebase::rebase(&repo, &target, strategy)?;
+
+            if result.success {
+                println!("{}", result.message);
+                println!("Applied {} commits", result.applied);
+            } else {
+                println!("Rebase encountered conflicts:");
+                for conflict in result.conflicts {
+                    println!("  {}", conflict);
+                }
+                println!("Applied {} commits before conflict", result.applied);
+            }
+            println!("Happy Mugging!");
         }
 
         Commands::CherryPick { commit } => {
@@ -482,9 +602,11 @@ async fn main() -> Result<()> {
             if result.success {
                 println!("{}", result.message);
                 println!("New commit: {}", result.new_commit);
+                println!("Happy Mugging!");
             } else {
                 println!("Cherry-pick failed: {}", result.message);
             }
+            
         }
 
         Commands::CherryPickRange { start, end } => {
@@ -501,6 +623,7 @@ async fn main() -> Result<()> {
                     println!("  {}: {}", commit, error);
                 }
             }
+            println!("Happy Mugging!");
         }
 
         Commands::BisectStart { bad, good } => {
@@ -509,6 +632,7 @@ async fn main() -> Result<()> {
             println!("Started bisect session");
             println!("Testing commit: {}", session.current_commit);
             println!("Commits to test: {}", session.tested_commits.len());
+            println!("Happy Mugging!");
         }
 
         Commands::BisectGood => {
@@ -534,6 +658,7 @@ async fn main() -> Result<()> {
 
             let stash_id = stash_manager.create(&current_branch, &msg, entries)?;
             println!("Stashed changes: {}", stash_id);
+            println!("Happy Mugging!");
         }
 
         Commands::StashPop => {
@@ -650,6 +775,87 @@ async fn main() -> Result<()> {
             let message = mug::remote::git_compat::migrate_git_to_mug(git_str, mug_str)?;
             println!("✓ Migration complete");
             println!("{}", message);
+        }
+
+        Commands::Config { action } => {
+            let repo = Repository::open(".")?;
+            
+            match action {
+                ConfigAction::Set { key, value } => {
+                    repo.set_config(&key, &value)?;
+                    println!("Set {} = {}", key, value);
+                    println!("Happy Mugging!");
+                }
+                ConfigAction::Get { key } => {
+                    match repo.get_config(&key)? {
+                        Some(value) => println!("{}", value),
+                        None => println!("Config key not found: {}", key),
+                    }
+                }
+                ConfigAction::List => {
+                    let configs = repo.list_config()?;
+                    if configs.is_empty() {
+                        println!("No configuration found");
+                    } else {
+                        for (key, value) in configs {
+                            println!("{} = {}", key, value);
+                        }
+                    }
+                    println!("Happy Mugging!");
+                }
+            }
+        }
+
+        Commands::Verify => {
+            let repo = Repository::open(".")?;
+            let issues = mug::core::repo::verify_repository(&repo)?;
+            
+            if issues.is_empty() {
+                println!("✓ Repository integrity verified");
+            } else {
+                println!("⚠ Found {} integrity issues:", issues.len());
+                for issue in issues {
+                    println!("  - {}", issue);
+                }
+            }
+            println!("Happy Mugging!");
+        }
+
+        Commands::Gc => {
+            let repo = Repository::open(".")?;
+            let stats = mug::core::repo::garbage_collect(&repo)?;
+            println!("Garbage collection complete");
+            println!("  Cleaned: {} bytes", stats.cleaned_bytes);
+            println!("  Objects: {} remaining", stats.objects_remaining);
+            println!("Happy Mugging!");
+        }
+
+        Commands::Reflog { reference } => {
+            let repo = Repository::open(".")?;
+            let history = mug::core::repo::get_reflog(&repo, reference.as_deref())?;
+            
+            if history.is_empty() {
+                println!("No reflog history found");
+            } else {
+                for entry in history {
+                    println!("{}", entry);
+                }
+            }
+            println!("Happy Mugging!");
+        }
+
+        Commands::UpdateRef { reference, value } => {
+            let repo = Repository::open(".")?;
+            repo.update_ref(&reference, &value)?;
+            println!("Updated {} to {}", reference, mug::core::hash::short_hash(&value));
+            println!("Happy Mugging!");
+        }
+
+        Commands::Serve { host, port, repos } => {
+            println!("Starting MUG server on {}:{}", host, port);
+            println!("Base repository directory: {}", repos.display());
+            
+            mug::remote::server::run_server(repos, &host, port).await?;
         }
     }
 

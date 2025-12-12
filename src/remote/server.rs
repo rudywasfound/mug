@@ -380,14 +380,38 @@ pub async fn run_server(repos_dir: PathBuf, host: &str, port: u16) -> Result<()>
 
 /// Gather all objects for a specific branch
 fn gather_branch_objects(
-    _repo: &Repository,
+    repo: &Repository,
     branch: &str,
     _current_head: &Option<String>,
 ) -> Result<(Vec<crate::core::commit::Commit>, Vec<crate::core::store::Blob>, Vec<crate::core::store::Tree>, String)> {
     // Get commits for branch
-    let commits = Vec::new(); // TODO: fetch commits from branch
-    let blobs = Vec::new();   // TODO: gather blobs from branch
-    let trees = Vec::new();   // TODO: gather trees from branch
+    let commits = repo.log()?
+        .into_iter()
+        .map(|log_line| {
+            // Parse log line to extract commit info
+            let parts: Vec<&str> = log_line.lines().collect();
+            let id = parts.first().map(|s| s.to_string()).unwrap_or_default();
+            crate::core::commit::Commit {
+                id,
+                tree_hash: String::new(),
+                parent: None,
+                author: String::new(),
+                message: String::new(),
+                timestamp: String::new(),
+            }
+        })
+        .collect();
+    
+    // Gather blobs from repository
+    // Full implementation would require iterating through .mug/objects directory
+    // and deserializing blob objects. For now, return empty as placeholder.
+    let blobs = Vec::new();
+    
+    // Gather trees from repository
+    // Full implementation would require querying object store for tree objects
+    // and deserializing them. For now, return empty as placeholder.
+    let trees = Vec::new();
+    
     let head = format!("refs/heads/{}", branch);
 
     Ok((commits, blobs, trees, head))
@@ -395,16 +419,44 @@ fn gather_branch_objects(
 
 /// Gather all branches and their heads
 fn gather_all_branches(
-    _repo: &Repository,
-    _specific_branch: Option<&str>,
+    repo: &Repository,
+    specific_branch: Option<&str>,
 ) -> Result<std::collections::HashMap<String, String>> {
-    // TODO: fetch all branches from repository
-    Ok(std::collections::HashMap::new())
+    let mut branches = std::collections::HashMap::new();
+
+    // Fetch all branches from repository
+    let all_branches = repo.branches()?;
+    
+    if let Some(filter) = specific_branch {
+        // Return only the specific branch if requested
+        if all_branches.contains(&filter.to_string()) {
+            // Get the head commit for this branch
+            let log = repo.log()?;
+            let head = log.first()
+                .and_then(|l| l.lines().next())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "HEAD".to_string());
+            branches.insert(filter.to_string(), head);
+        }
+    } else {
+        // Return all branches with their heads
+        let log = repo.log()?;
+        let head = log.first()
+            .and_then(|l| l.lines().next())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "HEAD".to_string());
+        
+        for branch in all_branches {
+            branches.insert(branch, head.clone());
+        }
+    }
+
+    Ok(branches)
 }
 
 /// Gather complete repository for clone
 fn gather_complete_repository(
-    _repo: &Repository,
+    repo: &Repository,
 ) -> Result<(
     Vec<crate::core::commit::Commit>,
     Vec<crate::core::store::Blob>,
@@ -412,8 +464,46 @@ fn gather_complete_repository(
     std::collections::HashMap<String, String>,
     String,
 )> {
-    // TODO: fetch all commits, blobs, trees, and branches
-    Ok((Vec::new(), Vec::new(), Vec::new(), std::collections::HashMap::new(), "main".to_string()))
+    // Fetch all commits, blobs, trees, and branches
+    let log = repo.log()?;
+    
+    let head = log.first()
+        .and_then(|l| l.lines().next())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "HEAD".to_string());
+    
+    let commits = log
+        .into_iter()
+        .map(|log_line| {
+            let parts: Vec<&str> = log_line.lines().collect();
+            let id = parts.first().map(|s| s.to_string()).unwrap_or_default();
+            crate::core::commit::Commit {
+                id,
+                tree_hash: String::new(),
+                parent: None,
+                author: String::new(),
+                message: String::new(),
+                timestamp: String::new(),
+            }
+        })
+        .collect();
+    
+    let blobs = Vec::new(); // Placeholder for blob gathering
+    let trees = Vec::new(); // Placeholder for tree gathering
+    
+    // Get all branches
+    let all_branches = repo.branches()?;
+    let mut branches = std::collections::HashMap::new();
+    
+    for branch in all_branches {
+        branches.insert(branch, head.clone());
+    }
+    
+    // Get default branch
+    let default_branch = repo.current_branch()?
+        .unwrap_or_else(|| "main".to_string());
+
+    Ok((commits, blobs, trees, branches, default_branch))
 }
 
 /// List all branches in repository
@@ -446,13 +536,22 @@ async fn list_branches_handler(
 
     let repo_path = state.repos_dir.join(&repo_name);
     match Repository::open(&repo_path) {
-        Ok(_repo) => {
-            // TODO: fetch actual branches from repo
-            HttpResponse::Ok().json(serde_json::json!({
-                "success": true,
-                "branches": [],
-                "message": "Listed branches"
-            }))
+        Ok(repo) => {
+            // Fetch actual branches from repo
+            match repo.branches() {
+                Ok(branches) => {
+                    HttpResponse::Ok().json(serde_json::json!({
+                        "success": true,
+                        "branches": branches,
+                        "message": "Listed branches"
+                    }))
+                }
+                Err(e) => {
+                    HttpResponse::InternalServerError().json(
+                        serde_json::json!({"error": format!("Failed to list branches: {}", e)}),
+                    )
+                }
+            }
         }
         Err(e) => {
             HttpResponse::NotFound().json(

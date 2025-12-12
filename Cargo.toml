@@ -28,5 +28,7 @@ tokio = { version = "1.41", features = ["rt", "sync", "time", "macros", "rt-mult
 bytes = "1.8"
 futures = "0.3"
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+ratatui = "0.27"
+crossterm = "0.28"
 
 

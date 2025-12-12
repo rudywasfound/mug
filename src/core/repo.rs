@@ -283,6 +283,80 @@ impl Repository {
     pub fn get_store(&self) -> &ObjectStore {
         &self.store
     }
+
+    /// Get root path of repository
+    pub fn root_path(&self) -> &Path {
+        &self.root
+    }
+
+    /// Load or create workspace configuration
+    pub fn workspace(&self) -> Result<crate::core::workspace::Workspace> {
+        match crate::core::workspace::Workspace::load(&self.root)? {
+            Some(ws) => Ok(ws),
+            None => {
+                // Create default workspace with full depot mapping
+                let mut ws = crate::core::workspace::Workspace::new(
+                    "default",
+                    &self.root,
+                );
+                ws.add_view(crate::core::workspace::ViewMapping::new("//...", "//..."));
+                Ok(ws)
+            }
+        }
+    }
+
+    /// Set configuration value
+    pub fn set_config(&self, key: &str, value: &str) -> Result<()> {
+        self.db.set("config", key.as_bytes(), value.as_bytes())?;
+        Ok(())
+    }
+
+    /// Get configuration value
+    pub fn get_config(&self, key: &str) -> Result<Option<String>> {
+        match self.db.get("config", key.as_bytes())? {
+            Some(bytes) => Ok(Some(String::from_utf8_lossy(&bytes).to_string())),
+            None => Ok(None),
+        }
+    }
+
+    /// List all configuration
+    pub fn list_config(&self) -> Result<Vec<(String, String)>> {
+        // Placeholder - would need database iteration
+        Ok(vec![])
+    }
+
+    /// Update reference
+    pub fn update_ref(&self, reference: &str, value: &str) -> Result<()> {
+        self.db.set("refs", reference.as_bytes(), value.as_bytes())?;
+        Ok(())
+    }
+}
+
+/// Repository statistics for garbage collection
+pub struct GarbageCollectStats {
+    pub cleaned_bytes: u64,
+    pub objects_remaining: u64,
+}
+
+/// Verify repository integrity
+pub fn verify_repository(_repo: &Repository) -> Result<Vec<String>> {
+    // Placeholder for integrity checks
+    Ok(vec![])
+}
+
+/// Perform garbage collection
+pub fn garbage_collect(_repo: &Repository) -> Result<GarbageCollectStats> {
+    // Placeholder for GC implementation
+    Ok(GarbageCollectStats {
+        cleaned_bytes: 0,
+        objects_remaining: 0,
+    })
+}
+
+/// Get reference log
+pub fn get_reflog(_repo: &Repository, _reference: Option<&str>) -> Result<Vec<String>> {
+    // Placeholder for reflog implementation
+    Ok(vec![])
 }
 
 // Helper function to clone the database (since Sled Db doesn't impl Clone)

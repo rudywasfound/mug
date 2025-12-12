@@ -1,10 +1,7 @@
 # MUG - Complete Documentation
 
-A fast, Rust-powered version control system that pokes fun at itself.
+## Installation
 
-## Quick Start
-
-### Installation
 ```bash
 cargo install --path .
 # or
@@ -12,7 +9,8 @@ cargo build --release
 ./target/release/mug --help
 ```
 
-### Initialize Repository
+## Repository Initialization
+
 ```bash
 mug init
 ```
@@ -23,31 +21,14 @@ Creates `.mug/` directory with:
 - `.mugignore` - Default ignore patterns
 - Default `main` branch
 
-### Basic Workflow
-```bash
-# Stage files
-mug add .
+## Commands Reference
 
-# Check status
-mug status
-
-# Commit changes
-mug commit -m "Initial commit" --author "Your Name"
-
-# View history
-mug log
-mug log --oneline
-
-# Show commit details
-mug show <commit-id>
-```
-
-## Commands
-
-### Repository
+### Repository Operations
 - `init [path]` - Initialize a new repository
 - `status` - Show working directory status
 - `log [--oneline]` - Show commit history
+- `verify` - Verify repository integrity
+- `gc` - Garbage collection
 
 ### Staging
 - `add <path>` - Stage files (use "." for all)
@@ -57,7 +38,7 @@ mug show <commit-id>
 - `restore <paths...>` - Restore files to HEAD state
 
 ### Commits
-- `commit -m <msg> [--author <name>]` - Create commit
+- `commit -m <msg> [--author <name>] [-a <author>]` - Create commit
 - `show <commit>` - Display commit details
 - `reset [soft|mixed|hard] [commit]` - Reset to commit
 
@@ -66,6 +47,8 @@ mug show <commit-id>
 - `branches` - List all branches
 - `checkout <branch>` - Switch branch
 - `merge <branch>` - Merge branch into current
+- `rebase <branch>` - Rebase current onto branch
+- `rebase -i <branch>` - Interactive rebase
 
 ### Tags
 - `tag <name> [-m <msg>]` - Create tag
@@ -81,6 +64,18 @@ mug show <commit-id>
 - `grep <pattern>` - Parallel search in files (regex support)
 - `diff [--from <commit>] [--to <commit>]` - Show diff between commits
 
+### Commit History Control
+- `cherry-pick <commit>` - Cherry-pick a commit
+- `cherry-pick-range <start> <end>` - Cherry-pick range
+- `bisect-start` - Start bisect session
+- `bisect-good` - Mark current as good
+- `bisect-bad` - Mark current as bad
+
+### Configuration
+- `config set <key> <value>` - Set config value
+- `config get <key>` - Get config value
+- `config list` - List all config
+
 ### Remote Operations
 - `remote add <name> <url>` - Add remote repository
 - `remote list` - List all remotes
@@ -92,56 +87,162 @@ mug show <commit-id>
 - `fetch [remote]` - Fetch from remote without merging
 - `clone <url> [destination]` - Clone remote repository
 
-## Hooks
+### Server Mode
+- `serve --host <addr> --port <port> --repos <path>` - Start HTTP server
+- `migrate <git-repo> <mug-repo>` - Migrate from Git
 
-MUG supports custom hooks for automating workflows. Hooks are stored in `.mug/hooks/`.
+## Hooks System
+
+Hooks are stored in `.mug/hooks/` and triggered automatically.
 
 ### Hook Types
 
-- **pre-commit** - Runs before creating a commit (e.g., lint checks, formatting)
-- **post-commit** - Runs after commit creation (e.g., notifications)
-- **pre-push** - Runs before pushing to remote (e.g., validation)
-- **post-push** - Runs after push completes (e.g., cleanup)
-- **pre-merge** - Runs before merging branches (e.g., conflict detection)
-- **post-merge** - Runs after merge completes (e.g., dependency updates)
+- **pre-commit** - Runs before creating a commit
+- **post-commit** - Runs after commit creation
+- **pre-push** - Runs before pushing to remote
+- **post-push** - Runs after push completes
+- **pre-merge** - Runs before merging branches
+- **post-merge** - Runs after merge completes
 
-### Hook File Format
-
-Hooks are executable scripts with naming convention: `<hook-type>-<name>`
-
-Example: `.mug/hooks/pre-commit-lint`
+### Creating Hooks
 
 ```bash
+# Create a pre-commit hook
+cat > .mug/hooks/pre-commit << 'EOF'
 #!/bin/bash
 # Run linters on staged files
 cargo clippy
 cargo fmt --check
+EOF
+
+chmod +x .mug/hooks/pre-commit
 ```
 
-### Hook Management
+Hooks are automatically discovered and executed at the appropriate lifecycle points.
 
-Hooks are automatically discovered from `.mug/hooks/`. You can:
-- Create hooks manually as executable scripts
-- Install hooks programmatically via HookManager
-- Disable hooks by renaming with `.disabled` suffix
-- List all active hooks with `hook list` (future CLI command)
+## Configuration System
 
-### Execution
+### User Identity
 
-Hooks are triggered automatically at the appropriate lifecycle points:
-- `pre-commit` triggers before `mug commit`
-- `post-commit` triggers after successful commit
-- `pre-merge` triggers before `mug merge`
-- And so on...
+```bash
+mug config set user.name "John Doe"
+mug config set user.email "john@example.com"
+```
 
-Hooks that fail will prevent the operation (strict mode).
+### Custom Configuration
+
+```bash
+mug config set custom_key custom_value
+mug config get custom_key
+mug config list
+```
+
+Configuration is persisted in `.mug/config.json`.
+
+## File Exclusion (.mugignore)
+
+Create a `.mugignore` file in the repository root:
+
+```
+# Comments start with #
+*.log              # Ignore all log files
+node_modules/      # Ignore directory and contents
+target/            # Rust build artifacts
+*.tmp              # Temporary files
+!important.log     # Re-include specific files
+
+# Directory patterns
+**/node_modules    # Ignore at any depth
+venv/              # Python virtual env
+__pycache__/       # Python cache
+```
+
+## File Attributes (.mugattributes)
+
+Create a `.mugattributes` file in the repository root:
+
+```
+# Pattern  [key=value]...
+
+*.bin line_ending=binary diff=binary merge=binary
+*.jpg line_ending=binary diff=binary
+* export-ignore      # Exclude from exports
+```
+
+Supported attributes:
+- `line_ending` - auto, lf, crlf, binary
+- `diff` - text, binary
+- `merge` - text, ours, theirs, union, binary
+- `export-ignore` - exclude from exports
+
+## Remote Operations
+
+### Setup
+
+```bash
+# Add remote
+mug remote add origin https://github.com/user/repo
+
+# List remotes
+mug remote list
+
+# Set default
+mug remote set-default origin
+
+# Update URL
+mug remote update-url origin https://github.com/user/newrepo
+```
+
+### Sync
+
+```bash
+# Pull changes
+mug pull origin main
+
+# Push changes
+mug push origin main
+
+# Push to default remote
+mug push
+
+# Fetch without merging
+mug fetch origin
+```
+
+## Server Mode
+
+Start an HTTP server to serve repositories:
+
+```bash
+mug serve --host 0.0.0.0 --port 8080 --repos /path/to/repos
+```
+
+Then clone from another machine:
+
+```bash
+mug clone http://server-ip:8080/repo-name local-copy
+```
+
+## Git Migration
+
+Import a Git repository into MUG:
+
+```bash
+mug migrate /path/to/git/repo /path/to/new/mug/repo
+```
+
+This preserves:
+- All commit history
+- Branch references
+- Tags
+- Author information
 
 ## Architecture
 
 ### Core Modules
 
 **database.rs** - Sled-backed key-value store
-- Trees: HEAD, BRANCHES, INDEX, COMMITS, REMOTES
+- Trees: HEAD, BRANCHES, INDEX, COMMITS, REMOTES, STASH, TAGS
 - Persistent storage layer
 
 **index.rs** - Staging area management
@@ -162,12 +263,12 @@ Hooks that fail will prevent the operation (strict mode).
 **branch.rs** - Branch management
 - Create, list, switch branches
 - HEAD reference tracking
-- Merge operations
+- Merge operations with conflict detection
 
 **store.rs** - Object storage
 - Blob storage for file contents
 - Tree storage for directory structures
-- Content-addressed objects
+- Content-addressed objects using SHA256
 
 **ignore.rs** - Pattern-based file exclusion
 - .mugignore support
@@ -183,7 +284,7 @@ Hooks that fail will prevent the operation (strict mode).
 **attributes.rs** - File attributes
 - .mugattributes support
 - Line-ending handling (auto, lf, crlf, binary)
-- Merge strategies (ours, theirs, union, binary)
+- Merge strategies
 - Export ignore marking
 
 **remote.rs** - Remote repository management
@@ -191,91 +292,40 @@ Hooks that fail will prevent the operation (strict mode).
 - Remote configuration storage
 - Default remote tracking
 
-**hash.rs** - SHA-1 hashing
+**hash.rs** - SHA-256 hashing
 - File content hashing
-- Git-compatible hash format
 - Short hash generation
+- Content addressing
 
 ### File Structure
+
 ```
 .mug/
 ├── db/                 # Sled database (persisted)
 │   ├── data.db
 │   └── *.log
-├── objects/           # Object storage (git-like)
+├── objects/           # Object storage
 │   ├── [hash]/content
 │   └── [hash]/content
+├── hooks/             # Custom hooks
+│   ├── pre-commit
+│   └── post-commit
 └── config.json        # Repository config
 
 .mugignore           # Ignore patterns
 .mugattributes       # File attributes
 ```
 
-## Configuration
+## Performance Characteristics
 
-### .mugignore Patterns
-```
-# Comments start with #
-*.log              # Ignore all log files
-node_modules/      # Ignore directory and contents
-target/            # Rust build artifacts
-*.tmp              # Temporary files
-!important.log     # Re-include specific files
+- **Index operations** - O(1) lookups, O(n) scans
+- **Status** - O(n) file walks with parallelization
+- **Commit** - O(n) tree building
+- **Search** - Parallel with rayon
+- **Storage** - Append-only objects, no repacking
 
-# Directory patterns
-**/node_modules    # Ignore at any depth
-venv/              # Python virtual env
-__pycache__/       # Python cache
-```
+## Reset Modes
 
-### .mugattributes
-```
-# Pattern  [key=value]...
-
-*.bin line_ending=binary diff=binary merge=binary
-*.jpg line_ending=binary diff=binary
-* export-ignore      # Exclude from exports
-```
-
-### config.json
-```json
-{
-  "user_name": "John Doe",
-  "user_email": "john@example.com",
-  "default_branch": "main",
-  "custom_key": "custom_value"
-}
-```
-
-## Remote Operations
-
-### Setup
-```bash
-# Add remote
-mug remote add origin https://github.com/user/repo
-
-# List remotes
-mug remote list
-
-# Set default
-mug remote set-default origin
-```
-
-### Push/Pull
-```bash
-# Pull changes
-mug pull origin main
-
-# Push changes
-mug push origin main
-
-# Push to default remote
-mug push
-```
-
-## Advanced Usage
-
-### Commit Modes
 ```bash
 # Soft reset - keep changes staged
 mug reset soft <commit>
@@ -287,121 +337,132 @@ mug reset mixed <commit>
 mug reset hard <commit>
 ```
 
-### Search
-```bash
-# Parallel grep across files
-mug grep "TODO"
-mug grep "function_name" src/
-```
-
-### File Operations
-```bash
-# Move/rename file
-mug mv old.rs new.rs
-
-# Remove file
-mug rm deleted.rs
-
-# Restore file to HEAD state
-mug restore path/to/file.rs
-```
-
-## Performance Characteristics
-
-- **Index operations** - O(1) lookups, O(n) scans
-- **Status** - O(n) file walks with parallelization
-- **Commit** - O(n) tree building
-- **Search** - Parallel with rayon
-- **Storage** - Append-only objects, no repacking
-
 ## Testing
 
 Run all tests:
+
 ```bash
 cargo test --lib
 ```
 
-Test coverage:
-- 42 tests across all modules
-- Index: validation, sorting, persistence
-- Config: defaults, save/load
-- Attributes: pattern matching, parsing
-- Ignore: glob patterns, negation
-- And more...
-
-## What's Ready
-
-✅ Repository initialization
-✅ Basic add/commit/log workflow
-✅ Branch creation and switching/merging
-✅ Status tracking with ignore support
-✅ File attribute management (.mugattributes)
-✅ Configuration management (.mugconfig)
-✅ Parallel file search with regex
-✅ Index staging area with validation
-✅ File operations (move, remove, restore)
-✅ Commit browsing and diffs
-✅ Reset with soft/mixed/hard modes
-✅ Tag creation, listing, deletion
-✅ Stash: save, list, pop work-in-progress
-✅ Simple merge (fast-forward detection)
-✅ **Full hook system** (6 hook types)
-✅ **Remote management** (add/remove/list/update)
-✅ **Sync operations** (push/pull/fetch/clone)
-
-## What's NOT Implemented
-
-These features are not yet available:
-- Network transport (currently simulated)
-- Interactive rebase
-- Conflict resolution (three-way merge algorithm)
-- Cherry-pick
-- Bisect
-- Submodules
-- Signed commits
-
-## Architecture Decisions
-
-- **Sled** for persistence - fast, ordered, embedded
-- **SHA-1** hashing - git-compatible
-- **Object storage** - content-addressed, deduplication
-- **Rayon** for parallelism - data-parallel operations
-- **Clap** for CLI - ergonomic command parsing
-- **Thiserror** for error handling - structured errors
-
-## Compatibility
-
-- Rust 2024 edition
-- All dependencies latest versions
-- No breaking changes to APIs
-- Backward compatible with existing repos
-
-## Development
+Run specific test:
 
 ```bash
-# Build
-cargo build
-
-# Release
-cargo build --release
-
-# Test
-cargo test --lib
-
-# Lint
-cargo clippy
-
-# Format
-cargo fmt
+cargo test -- --exact test_name
 ```
 
-## Contributing
+## Troubleshooting
 
-Current gaps for production:
-1. Complete remote push/pull
-2. Implement merge conflict resolution
-3. Add interactive rebase
-4. Full test coverage for complex scenarios
-5. Performance benchmarking
+### Repository seems corrupt
 
-See code comments and TODOs for specific implementation notes.
+```bash
+# Verify repository integrity
+mug verify
+
+# Check status
+mug status
+
+# View recent commits
+mug log --oneline -n 20
+```
+
+### Can't push/pull
+
+```bash
+# Check remotes
+mug remote list
+
+# Test remote connectivity
+mug fetch origin
+
+# Check default remote
+mug config get default_remote
+```
+
+### Merge conflicts
+
+```bash
+# Check status to see conflicts
+mug status
+
+# View diff to understand conflict
+mug diff
+
+# Abort merge and try rebase instead
+mug checkout main
+mug rebase feature-branch
+```
+
+## Best Practices
+
+1. **Commit frequently** - Small, focused commits are easier to rebase/bisect
+2. **Use meaningful messages** - Helps with history navigation
+3. **Create branches for features** - Keep main clean
+4. **Use interactive rebase** - Clean up commit history before pushing
+5. **Set up hooks** - Automate checks and formatting
+6. **Keep .mugignore updated** - Prevents committing build artifacts
+
+## Advanced Patterns
+
+### Feature Branch Workflow
+
+```bash
+mug checkout main
+mug branch feature/my-feature
+mug checkout feature/my-feature
+
+# Make commits
+mug add .
+mug commit -m "Work"
+
+# Update from main
+mug fetch origin
+mug rebase origin/main
+
+# Merge into main
+mug checkout main
+mug merge feature/my-feature
+mug push origin main
+```
+
+### Interactive Rebase Cleanup
+
+```bash
+# Before pushing, clean up commits
+mug rebase -i main
+
+# Pick first commit, squash/fixup subsequent ones
+# Reword commits as needed
+```
+
+### Bisect to Find Bad Commit
+
+```bash
+mug bisect-start
+mug bisect-bad              # Mark current as bad
+mug checkout v1.0           # Checkout known good version
+mug bisect-good
+
+# MUG will search between good/bad
+mug status                  # Test the code
+mug bisect-good             # or bisect-bad
+
+# Repeat until found
+```
+
+## Limitations
+
+- **Network Transport**: Currently simulated (no actual HTTP/S or SSH calls)
+- **Three-Way Merge**: Simplified conflict detection only
+- **Signing**: No commit signing support
+- **Submodules**: Not implemented
+- **Worktrees**: Not implemented
+
+## Getting Help
+
+```bash
+mug --help                      # Overall help
+mug <command> --help            # Command-specific help
+```
+
+See [QUICK_START.md](QUICK_START.md) for simple examples.

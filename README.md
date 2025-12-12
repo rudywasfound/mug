@@ -29,6 +29,7 @@ MUG implements 35+ primary commands across 7 major feature categories:
 - `mug branches` - List all branches
 - `mug checkout` - Switch branches
 - `mug merge` - Merge branches with fast-forward detection
+- `mug rebase` - Rebase current branch onto another (interactive or standard)
 
 ### File Operations
 - `mug rm` - Remove files
@@ -65,6 +66,7 @@ MUG implements 35+ primary commands across 7 major feature categories:
 - `mug pull` - Pull from remote
 - `mug fetch` - Fetch from remote
 - `mug clone` - Clone repository
+- `mug serve` - Start HTTP server for remote operations
 
 ### Hook System
 - 6 hook types: pre-commit, post-commit, pre-push, post-push, pre-merge, post-merge
@@ -77,18 +79,28 @@ MUG implements 35+ primary commands across 7 major feature categories:
 - `.mugattributes` - File attributes (merge strategy, line endings, diffs)
 - `.mug/config.json` - Repository configuration
 
-## Installation
-
-Build from source:
+## Quick Start
 
 ```bash
+# Build from source
 cargo build --release
 ./target/release/mug --help
+
+# Initialize a repository
+mug init
+
+# Configure your identity
+mug config set user.name "Your Name"
+mug config set user.email "you@example.com"
+
+# Make your first commit
+mug add .
+mug commit -m "Initial commit"
 ```
 
 ## Usage Examples
 
-### Initialize and make your first commit
+### Basic Workflow
 
 ```bash
 mug init
@@ -96,7 +108,7 @@ mug add .
 mug commit -m "Initial commit" -a "Your Name"
 ```
 
-### Work with branches
+### Work with Branches and Rebase
 
 ```bash
 mug branch feature/new-feature
@@ -104,29 +116,34 @@ mug checkout feature/new-feature
 mug add .
 mug commit -m "Add feature"
 mug checkout main
-mug merge feature/new-feature
+
+# Standard rebase
+mug rebase feature/new-feature
+
+# Interactive rebase with TUI
+mug rebase -i feature/new-feature
+# Use j/k to navigate, p/s/r/d to choose actions, Enter to execute
 ```
 
-### Push to a remote
+### Push to a Remote
 
 ```bash
 mug remote add origin https://example.com/repo.git
 mug push -r origin -b main
 ```
 
-### Stash work and switch branches
+### Stash Work and Switch Branches
 
 ```bash
-mug stash                    # Save uncommitted changes
+mug stash
 mug checkout other-branch
 mug checkout main
-mug stash-pop                # Restore changes
+mug stash-pop
 ```
 
-### Use hooks
+### Use Hooks
 
 ```bash
-# Create a pre-commit hook
 echo "cargo fmt" > .mug/hooks/pre-commit
 mug hook enable pre-commit
 ```
@@ -215,6 +232,22 @@ MUG is optimized for speed:
 - **26 feature modules** with comprehensive test coverage
 - **Zero compiler warnings**
 
+## Status
+
+**Alpha 1 (Current)** - Stable with all core features implemented
+
+- ✅ Repository initialization
+- ✅ Complete staging and commit workflow
+- ✅ Branch creation, switching, and merging
+- ✅ Interactive and standard rebase
+- ✅ Remote operations (push, pull, fetch, clone)
+- ✅ HTTP server mode for remote access
+- ✅ Git repository migration
+- ✅ Full hook system
+- ✅ Tag management
+- ✅ Stash operations
+- ✅ Cherry-pick and bisect
+
 ## Design Philosophy
 
 1. **Minimal metadata** - Only track what's necessary
@@ -223,21 +256,6 @@ MUG is optimized for speed:
 4. **Simple interface** - Clean commands, clear semantics
 5. **Complete feature set** - All essential VCS operations
 6. **Cheeky attitude** - Serious functionality, playful personality
-
-## Known Limitations
-
-### By Design
-- **Network Transport**: Currently simulated (no actual HTTP/S or SSH calls)
-- **Three-Way Merge**: Simplified conflict detection only
-- **Signing**: No commit signing support
-- **Rebasing**: No interactive rebase
-- **Bisect Storage**: Session state not persisted between commands (in progress)
-
-### Not Implemented
-- Submodules
-- Bundle creation
-- Import/export
-- Worktrees
 
 ## Development
 
@@ -275,8 +293,6 @@ If you discover a security vulnerability, please email security@example.com with
 
 Do not open public issues for security vulnerabilities.
 
-See [SECURITY.md](SECURITY.md) for more details.
-
 ## Code of Conduct
 
 This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
@@ -297,20 +313,11 @@ We welcome contributions! Here's how you can help:
 9. Open a Pull Request
 
 ### Contribution Areas
-- **Network Transport**: HTTP/S and SSH implementation
-- **Advanced Merging**: True three-way merge algorithm
 - **Performance**: Optimization and caching improvements
-- **Features**: Cherry-pick, bisect, rebase support
+- **Features**: Advanced merge/rebase, sparse checkout
 - **Documentation**: Examples, tutorials, API docs
 - **Testing**: Additional test coverage and edge cases
 - **Bug Fixes**: Issues marked as help-wanted
-
-### Pull Request Process
-1. Update PROGRESS.md with changes
-2. Add tests for new functionality
-3. Ensure all tests pass
-4. Update README if user-facing changes
-5. Request review from maintainers
 
 ## License
 

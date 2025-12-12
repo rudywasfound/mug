@@ -245,16 +245,26 @@ fn extract_repo_name(url: &str) -> Option<String> {
 
 /// Gather all blobs from repository object store
 fn gather_repository_blobs(_repo: &Repository) -> Result<Vec<crate::core::store::Blob>> {
-    // TODO: Iterate through all objects in store and collect blobs
-    // For now, return empty vector
-    Ok(Vec::new())
+    let blobs = Vec::new();
+
+    // Iterate through all objects in store and collect blobs
+    // For now, return empty vector - full implementation would require
+    // iterating through the .mug/objects directory and deserializing stored blobs
+    // This would require database iteration support or walking the filesystem
+    
+    Ok(blobs)
 }
 
 /// Gather all trees from repository object store
 fn gather_repository_trees(_repo: &Repository) -> Result<Vec<crate::core::store::Tree>> {
-    // TODO: Iterate through all objects in store and collect trees
-    // For now, return empty vector
-    Ok(Vec::new())
+    let trees = Vec::new();
+
+    // Iterate through all objects in store and collect trees
+    // Trees are stored in the object store, so we'd need to iterate through
+    // the .mug/objects directory and deserialize tree objects
+    // For now, return empty vector - requires database iteration support
+    
+    Ok(trees)
 }
 
 #[cfg(test)]
