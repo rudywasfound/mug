@@ -3,6 +3,9 @@
 A fast, Rust-powered version control system that combines Git-like functionality with modern architecture.
 
 > "Mug your files into history"
+> [!NOTE]
+> Fun fact:
+> Mug means "fool" in british english
 
 MUG is built on modern technologies:
 - **Content-addressable store** using SHA256 hashes for automatic deduplication
