@@ -278,6 +278,11 @@ impl Repository {
     pub fn get_db(&self) -> &MugDb {
         &self.db
     }
+
+    /// Get object store reference for advanced operations
+    pub fn get_store(&self) -> &ObjectStore {
+        &self.store
+    }
 }
 
 // Helper function to clone the database (since Sled Db doesn't impl Clone)

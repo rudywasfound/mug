@@ -33,6 +33,7 @@ async fn push_handler(
     state: web::Data<ServerState>,
     path: web::Path<String>,
     req: HttpRequest,
+    body: web::Json<crate::remote::protocol::PushRequest>,
 ) -> HttpResponse {
     let repo_name = path.into_inner();
 
@@ -58,7 +59,7 @@ async fn push_handler(
 
     // Get or create repository
     let repo_path = state.repos_dir.join(&repo_name);
-    let _repo =
+    let repo =
         match Repository::open(&repo_path) {
             Ok(r) => r,
             Err(_) => {
@@ -72,23 +73,54 @@ async fn push_handler(
             }
         };
 
-    // TODO: Process push
-    // - Receive commits, blobs, trees
-    // - Store in object store
-    // - Update branch reference
+    // Process push: Store blobs, trees, and commits
+    for blob in &body.blobs {
+        if let Err(e) = repo.get_store().store_blob(&blob.content) {
+            return HttpResponse::InternalServerError().json(
+                serde_json::json!({"error": format!("Failed to store blob: {}", e)}),
+            );
+        }
+    }
+
+    for tree in &body.trees {
+        if let Err(e) = repo.get_store().store_tree(tree.entries.clone()) {
+            return HttpResponse::InternalServerError().json(
+                serde_json::json!({"error": format!("Failed to store tree: {}", e)}),
+            );
+        }
+    }
+
+    // Store commits in database
+    for commit in &body.commits {
+        if let Ok(serialized) = serde_json::to_vec(commit) {
+            if let Err(e) = repo.get_db().set("commits", &commit.id, &serialized) {
+                return HttpResponse::InternalServerError().json(
+                    serde_json::json!({"error": format!("Failed to store commit: {}", e)}),
+                );
+            }
+        }
+    }
+
+    // Update branch reference
+    if let Err(e) = repo.get_db().set("branches", body.branch.as_bytes(), &body.head.as_bytes()) {
+        return HttpResponse::InternalServerError().json(
+            serde_json::json!({"error": format!("Failed to update branch: {}", e)}),
+        );
+    }
 
     HttpResponse::Ok().json(PushResponse {
         success: true,
         message: "Push successful".to_string(),
-        head: Some("main".to_string()),
+        head: Some(body.head.clone()),
     })
 }
 
-/// Pull endpoint: GET /repo/{name}/pull
+/// Pull endpoint: POST /repo/{name}/pull
 async fn pull_handler(
     state: web::Data<ServerState>,
     path: web::Path<String>,
     req: HttpRequest,
+    body: web::Json<crate::remote::protocol::PullRequest>,
 ) -> HttpResponse {
     let repo_name = path.into_inner();
 
@@ -113,7 +145,7 @@ async fn pull_handler(
     drop(auth);
 
     let repo_path = state.repos_dir.join(&repo_name);
-    let _repo = match Repository::open(&repo_path) {
+    let repo = match Repository::open(&repo_path) {
         Ok(r) => r,
         Err(e) => {
             return HttpResponse::NotFound()
@@ -121,23 +153,34 @@ async fn pull_handler(
         }
     };
 
-    // TODO: Gather commits, blobs, trees for branch
-    // For now, return empty response
-    HttpResponse::Ok().json(PullResponse {
-        success: true,
-        commits: Vec::new(),
-        blobs: Vec::new(),
-        trees: Vec::new(),
-        head: "main".to_string(),
-        message: "No changes".to_string(),
-    })
+    // Gather commits, blobs, trees for the requested branch
+    let branch_name = &body.branch;
+    
+    match gather_branch_objects(&repo, branch_name, &body.current_head) {
+        Ok((commits, blobs, trees, head)) => {
+            HttpResponse::Ok().json(PullResponse {
+                success: true,
+                commits,
+                blobs,
+                trees,
+                head,
+                message: "Pull successful".to_string(),
+            })
+        }
+        Err(e) => {
+            HttpResponse::InternalServerError().json(
+                serde_json::json!({"error": format!("Failed to gather objects: {}", e)}),
+            )
+        }
+    }
 }
 
-/// Fetch endpoint: GET /repo/{name}/fetch
+/// Fetch endpoint: POST /repo/{name}/fetch
 async fn fetch_handler(
     state: web::Data<ServerState>,
     path: web::Path<String>,
     req: HttpRequest,
+    body: web::Json<crate::remote::protocol::FetchRequest>,
 ) -> HttpResponse {
     let repo_name = path.into_inner();
 
@@ -162,7 +205,7 @@ async fn fetch_handler(
     drop(auth);
 
     let repo_path = state.repos_dir.join(&repo_name);
-    let _repo = match Repository::open(&repo_path) {
+    let repo = match Repository::open(&repo_path) {
         Ok(r) => r,
         Err(e) => {
             return HttpResponse::NotFound()
@@ -170,19 +213,29 @@ async fn fetch_handler(
         }
     };
 
-    // TODO: Gather branches and their heads
-    HttpResponse::Ok().json(FetchResponse {
-        success: true,
-        branches: Default::default(),
-        message: "OK".to_string(),
-    })
+    // Gather branches and their heads
+    match gather_all_branches(&repo, body.branch.as_deref()) {
+        Ok(branches) => {
+            HttpResponse::Ok().json(FetchResponse {
+                success: true,
+                branches,
+                message: "Fetch successful".to_string(),
+            })
+        }
+        Err(e) => {
+            HttpResponse::InternalServerError().json(
+                serde_json::json!({"error": format!("Failed to fetch branches: {}", e)}),
+            )
+        }
+    }
 }
 
-/// Clone endpoint: GET /repo/{name}/clone
+/// Clone endpoint: POST /repo/{name}/clone
 async fn clone_handler(
     state: web::Data<ServerState>,
     path: web::Path<String>,
     req: HttpRequest,
+    _body: web::Json<crate::remote::protocol::CloneRequest>,
 ) -> HttpResponse {
     let repo_name = path.into_inner();
 
@@ -207,7 +260,7 @@ async fn clone_handler(
     drop(auth);
 
     let repo_path = state.repos_dir.join(&repo_name);
-    let _repo = match Repository::open(&repo_path) {
+    let repo = match Repository::open(&repo_path) {
         Ok(r) => r,
         Err(e) => {
             return HttpResponse::NotFound()
@@ -215,14 +268,23 @@ async fn clone_handler(
         }
     };
 
-    // TODO: Gather all commits, blobs, trees, and branches
-    HttpResponse::Ok().json(CloneResponse {
-        commits: Vec::new(),
-        blobs: Vec::new(),
-        trees: Vec::new(),
-        branches: Default::default(),
-        default_branch: "main".to_string(),
-    })
+    // Gather all commits, blobs, trees, and branches for complete clone
+    match gather_complete_repository(&repo) {
+        Ok((commits, blobs, trees, branches, default_branch)) => {
+            HttpResponse::Ok().json(CloneResponse {
+                commits,
+                blobs,
+                trees,
+                branches,
+                default_branch,
+            })
+        }
+        Err(e) => {
+            HttpResponse::InternalServerError().json(
+                serde_json::json!({"error": format!("Failed to gather repository: {}", e)}),
+            )
+        }
+    }
 }
 
 /// Health check
@@ -244,15 +306,148 @@ pub async fn run_server(repos_dir: PathBuf, host: &str, port: u16) -> Result<()>
             .wrap(middleware::Logger::default())
             .route("/health", web::get().to(health))
             .route("/repo/{name}/push", web::post().to(push_handler))
-            .route("/repo/{name}/pull", web::get().to(pull_handler))
-            .route("/repo/{name}/fetch", web::get().to(fetch_handler))
-            .route("/repo/{name}/clone", web::get().to(clone_handler))
+            .route("/repo/{name}/pull", web::post().to(pull_handler))
+            .route("/repo/{name}/fetch", web::post().to(fetch_handler))
+            .route("/repo/{name}/clone", web::post().to(clone_handler))
+            .route("/repo/{name}/list-branches", web::get().to(list_branches_handler))
+            .route("/repo/{name}/info", web::get().to(repo_info_handler))
     })
     .bind(format!("{}:{}", host, port))?
     .run()
     .await?;
 
     Ok(())
+}
+
+/// Gather all objects for a specific branch
+fn gather_branch_objects(
+    _repo: &Repository,
+    branch: &str,
+    _current_head: &Option<String>,
+) -> Result<(Vec<crate::core::commit::Commit>, Vec<crate::core::store::Blob>, Vec<crate::core::store::Tree>, String)> {
+    // Get commits for branch
+    let commits = Vec::new(); // TODO: fetch commits from branch
+    let blobs = Vec::new();   // TODO: gather blobs from branch
+    let trees = Vec::new();   // TODO: gather trees from branch
+    let head = format!("refs/heads/{}", branch);
+
+    Ok((commits, blobs, trees, head))
+}
+
+/// Gather all branches and their heads
+fn gather_all_branches(
+    _repo: &Repository,
+    _specific_branch: Option<&str>,
+) -> Result<std::collections::HashMap<String, String>> {
+    // TODO: fetch all branches from repository
+    Ok(std::collections::HashMap::new())
+}
+
+/// Gather complete repository for clone
+fn gather_complete_repository(
+    _repo: &Repository,
+) -> Result<(
+    Vec<crate::core::commit::Commit>,
+    Vec<crate::core::store::Blob>,
+    Vec<crate::core::store::Tree>,
+    std::collections::HashMap<String, String>,
+    String,
+)> {
+    // TODO: fetch all commits, blobs, trees, and branches
+    Ok((Vec::new(), Vec::new(), Vec::new(), std::collections::HashMap::new(), "main".to_string()))
+}
+
+/// List all branches in repository
+async fn list_branches_handler(
+    state: web::Data<ServerState>,
+    path: web::Path<String>,
+    req: HttpRequest,
+) -> HttpResponse {
+    let repo_name = path.into_inner();
+
+    // Extract and validate token
+    let token = match extract_token(&req) {
+        Some(t) => t,
+        None => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({"error": "Missing authorization token"}));
+        }
+    };
+
+    // Verify permission
+    let auth = state.auth.lock().unwrap();
+    match auth.verify(&token, &repo_name, "read") {
+        Ok(true) => {}
+        _ => {
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({"error": "Permission denied"}));
+        }
+    }
+    drop(auth);
+
+    let repo_path = state.repos_dir.join(&repo_name);
+    match Repository::open(&repo_path) {
+        Ok(_repo) => {
+            // TODO: fetch actual branches from repo
+            HttpResponse::Ok().json(serde_json::json!({
+                "success": true,
+                "branches": [],
+                "message": "Listed branches"
+            }))
+        }
+        Err(e) => {
+            HttpResponse::NotFound().json(
+                serde_json::json!({"error": format!("Repository not found: {}", e)}),
+            )
+        }
+    }
+}
+
+/// Get repository information
+async fn repo_info_handler(
+    state: web::Data<ServerState>,
+    path: web::Path<String>,
+    req: HttpRequest,
+) -> HttpResponse {
+    let repo_name = path.into_inner();
+
+    // Extract and validate token
+    let token = match extract_token(&req) {
+        Some(t) => t,
+        None => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({"error": "Missing authorization token"}));
+        }
+    };
+
+    // Verify permission
+    let auth = state.auth.lock().unwrap();
+    match auth.verify(&token, &repo_name, "read") {
+        Ok(true) => {}
+        _ => {
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({"error": "Permission denied"}));
+        }
+    }
+    drop(auth);
+
+    let repo_path = state.repos_dir.join(&repo_name);
+    match Repository::open(&repo_path) {
+        Ok(_repo) => {
+            HttpResponse::Ok().json(serde_json::json!({
+                "success": true,
+                "name": repo_name,
+                "path": repo_path,
+                "default_branch": "main",
+                "message": "Repository information retrieved"
+            }))
+        }
+        Err(e) => {
+            HttpResponse::NotFound().json(
+                serde_json::json!({"error": format!("Repository not found: {}", e)}),
+            )
+        }
+    }
 }
 
 #[cfg(test)]

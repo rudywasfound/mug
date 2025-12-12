@@ -61,13 +61,19 @@ impl RemoteClient {
         // Extract repo name from URL
         let repo_name = extract_repo_name(&remote.url).unwrap_or_else(|| "repo".to_string());
 
+        // Gather blobs from repository
+        let blobs = gather_repository_blobs(repo).unwrap_or_default();
+
+        // Gather trees from repository
+        let trees = gather_repository_trees(repo).unwrap_or_default();
+
         // Build request
         let request = PushRequest {
             repo: repo_name,
             branch: branch.to_string(),
             commits,
-            blobs: Vec::new(), // TODO: gather blobs
-            trees: Vec::new(), // TODO: gather trees
+            blobs,
+            trees,
             head: "HEAD".to_string(),
         };
 
@@ -235,6 +241,20 @@ fn extract_repo_name(url: &str) -> Option<String> {
 
     // Get the last component after the domain
     url.split('/').last().map(|s| s.to_string())
+}
+
+/// Gather all blobs from repository object store
+fn gather_repository_blobs(_repo: &Repository) -> Result<Vec<crate::core::store::Blob>> {
+    // TODO: Iterate through all objects in store and collect blobs
+    // For now, return empty vector
+    Ok(Vec::new())
+}
+
+/// Gather all trees from repository object store
+fn gather_repository_trees(_repo: &Repository) -> Result<Vec<crate::core::store::Tree>> {
+    // TODO: Iterate through all objects in store and collect trees
+    // For now, return empty vector
+    Ok(Vec::new())
 }
 
 #[cfg(test)]
