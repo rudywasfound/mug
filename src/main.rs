@@ -232,6 +232,15 @@ enum Commands {
         /// Destination directory
         destination: Option<String>,
     },
+
+    /// Migrate a Git repository to MUG
+    Migrate {
+        /// Path to Git repository
+        git_path: PathBuf,
+
+        /// Path to create MUG repository
+        mug_path: PathBuf,
+    },
 }
 
 #[derive(Subcommand)]
@@ -628,6 +637,19 @@ async fn main() -> Result<()> {
 
         Commands::Clone { url, destination } => {
             mug::remote::sync::SyncManager::clone(&url, destination.as_deref())?;
+        }
+
+        Commands::Migrate { git_path, mug_path } => {
+            let git_str = git_path.to_str().ok_or(
+                mug::core::error::Error::Custom("Invalid Git path".to_string())
+            )?;
+            let mug_str = mug_path.to_str().ok_or(
+                mug::core::error::Error::Custom("Invalid MUG path".to_string())
+            )?;
+            
+            let message = mug::remote::git_compat::migrate_git_to_mug(git_str, mug_str)?;
+            println!("✓ Migration complete");
+            println!("{}", message);
         }
     }
 
