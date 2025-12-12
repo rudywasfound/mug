@@ -1,4 +1,5 @@
 pub mod client;
+pub mod git_compat;
 pub mod protocol;
 pub mod remote;
 pub mod server;

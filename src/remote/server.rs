@@ -1,6 +1,7 @@
 use crate::core::auth::ServerAuth;
 use crate::core::error::Result;
 use crate::remote::protocol::{CloneResponse, FetchResponse, PullResponse, PushResponse};
+use crate::remote::git_compat;
 use crate::core::repo::Repository;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, middleware, web};
 use std::path::PathBuf;
@@ -287,6 +288,63 @@ async fn clone_handler(
     }
 }
 
+/// Migrate Git repository to MUG
+async fn migrate_from_git(
+    state: web::Data<ServerState>,
+    path: web::Path<String>,
+    req: HttpRequest,
+    body: web::Json<serde_json::Value>,
+) -> HttpResponse {
+    let repo_name = path.into_inner();
+
+    // Extract and validate token
+    let token = match extract_token(&req) {
+        Some(t) => t,
+        None => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({"error": "Missing authorization token"}));
+        }
+    };
+
+    // Verify write permission
+    let auth = state.auth.lock().unwrap();
+    match auth.verify(&token, &repo_name, "write") {
+        Ok(true) => {}
+        _ => {
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({"error": "Permission denied"}));
+        }
+    }
+    drop(auth);
+
+    // Get Git path from request
+    let git_path = match body.get("git_path") {
+        Some(serde_json::Value::String(p)) => p.clone(),
+        _ => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({"error": "Missing git_path in request"}));
+        }
+    };
+
+    let mug_path = state.repos_dir.join(&repo_name);
+
+    // Perform migration
+    match git_compat::migrate_git_to_mug(&git_path, mug_path.to_str().unwrap_or("")) {
+        Ok(message) => {
+            HttpResponse::Ok().json(serde_json::json!({
+                "success": true,
+                "message": message,
+                "repo": repo_name
+            }))
+        }
+        Err(e) => {
+            HttpResponse::BadRequest().json(serde_json::json!({
+                "error": format!("Migration failed: {}", e)
+            }))
+        }
+    }
+}
+
 /// Health check
 async fn health() -> HttpResponse {
     HttpResponse::Ok().json(serde_json::json!({"status": "ok"}))
@@ -311,6 +369,7 @@ pub async fn run_server(repos_dir: PathBuf, host: &str, port: u16) -> Result<()>
             .route("/repo/{name}/clone", web::post().to(clone_handler))
             .route("/repo/{name}/list-branches", web::get().to(list_branches_handler))
             .route("/repo/{name}/info", web::get().to(repo_info_handler))
+            .route("/repo/{name}/migrate-from-git", web::post().to(migrate_from_git))
     })
     .bind(format!("{}:{}", host, port))?
     .run()
