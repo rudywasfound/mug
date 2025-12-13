@@ -135,6 +135,4 @@ MUG is building a VCS that:
 
 This isn't Git 2.0. It's a research vehicle for rethinking what version control should be.
 
----
 
-**Cook mode: ON** 🔥

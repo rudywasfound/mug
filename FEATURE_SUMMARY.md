@@ -255,8 +255,6 @@ MUG demonstrates that VCS design is still an open research area. By combining:
 
 We get a system that solves real problems (large files, signing, backports) while maintaining Git's strengths (offline, history, speed).
 
-**This is research. This is innovation. This cooks.** 🔥
-
 ---
 
 Status: **Alpha 1.0** - Core features complete, production-ready for standard workflows.
