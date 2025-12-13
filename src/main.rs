@@ -252,6 +252,18 @@ enum Commands {
         mug_path: PathBuf,
     },
 
+    /// Manage cryptographic signing keys
+    Keys {
+        #[command(subcommand)]
+        action: KeyAction,
+    },
+
+    /// Manage temporal branches (non-linear history)
+    Temporal {
+        #[command(subcommand)]
+        action: TemporalAction,
+    },
+
     /// Configure repository settings
     Config {
         #[command(subcommand)]
@@ -341,6 +353,46 @@ enum ConfigAction {
     },
     /// List all configuration
     List,
+}
+
+#[derive(Subcommand)]
+enum KeyAction {
+    /// Generate a new signing key
+    Generate,
+    /// List all signing keys
+    List,
+    /// Import a key from seed
+    Import {
+        /// Base64-encoded seed
+        seed: String,
+    },
+    /// Show current signing key
+    Current,
+}
+
+#[derive(Subcommand)]
+enum TemporalAction {
+    /// Create a temporal branch at a specific commit
+    Create {
+        /// Branch name
+        name: String,
+        /// Commit to branch from
+        commit: String,
+    },
+    /// List temporal branches
+    List,
+    /// Show temporal branch history
+    Show {
+        /// Branch name
+        branch: String,
+    },
+    /// Merge another branch into this temporal branch
+    Merge {
+        /// Target branch name
+        target: String,
+        /// Source branch name
+        source: String,
+    },
 }
 
 #[tokio::main]
@@ -856,6 +908,66 @@ async fn main() -> Result<()> {
             println!("Base repository directory: {}", repos.display());
             
             mug::remote::server::run_server(repos, &host, port).await?;
+        }
+
+        Commands::Keys { action } => {
+            match action {
+                KeyAction::Generate => {
+                    let (key, public) = mug::core::crypto::CryptoKey::generate()?;
+                    if let Some(seed) = &key.seed {
+                        println!("✓ Signing key generated");
+                        println!("Public Key: {}", public);
+                        println!("Seed (save securely): {}", seed);
+                        println!("⚠️  Never share your seed");
+                    }
+                }
+                KeyAction::List => {
+                    println!("TODO: List signing keys from repo");
+                }
+                KeyAction::Import { seed } => {
+                    let key = mug::core::crypto::CryptoKey::from_seed(&seed)?;
+                    println!("✓ Key imported");
+                    println!("Public Key: {}", key.public_key);
+                }
+                KeyAction::Current => {
+                    println!("TODO: Show current signing key");
+                }
+            }
+            println!("Happy Mugging!");
+        }
+
+        Commands::Temporal { action } => {
+            use mug::core::temporal::TemporalBranchManager;
+            
+            let repo = Repository::open(".")?;
+            let temporal = TemporalBranchManager::new(repo.get_db().clone());
+            
+            match action {
+                TemporalAction::Create { name, commit } => {
+                    temporal.create_temporal_branch(name.clone(), commit.clone(), None)?;
+                    println!("✓ Temporal branch '{}' created at {}", name, &commit[..8]);
+                }
+                TemporalAction::List => {
+                    let branches = temporal.list_temporal_branches()?;
+                    if branches.is_empty() {
+                        println!("No temporal branches");
+                    } else {
+                        println!("Temporal Branches:");
+                        for branch in branches {
+                            println!("  {} @ {}", branch.name, &branch.head[..8]);
+                        }
+                    }
+                }
+                TemporalAction::Show { branch } => {
+                    let history = temporal.get_temporal_history(&branch)?;
+                    println!("{}", history.visualize());
+                }
+                TemporalAction::Merge { target, source } => {
+                    println!("⚠️  Temporal merge requires commit IDs - TODO: implement full merge");
+                    println!("Target: {}, Source: {}", target, source);
+                }
+            }
+            println!("Happy Mugging!");
         }
     }
 

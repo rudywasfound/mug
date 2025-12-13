@@ -5,6 +5,7 @@ pub mod branch;
 pub mod cherry_pick;
 pub mod commit;
 pub mod config;
+pub mod crypto;
 pub mod database;
 pub mod depot;
 pub mod diff;
@@ -25,6 +26,7 @@ pub mod stash;
 pub mod status;
 pub mod store;
 pub mod tag;
+pub mod temporal;
 pub mod workspace;
 
 pub use error::{Error, Result};
