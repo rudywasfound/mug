@@ -25,6 +25,7 @@ pub mod sparse;
 pub mod stash;
 pub mod status;
 pub mod store;
+pub mod store_manager;
 pub mod tag;
 pub mod temporal;
 pub mod workspace;

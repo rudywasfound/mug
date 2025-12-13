@@ -264,6 +264,12 @@ enum Commands {
         action: TemporalAction,
     },
 
+    /// Manage centralized large file storage
+    Store {
+        #[command(subcommand)]
+        action: StoreAction,
+    },
+
     /// Configure repository settings
     Config {
         #[command(subcommand)]
@@ -393,6 +399,27 @@ enum TemporalAction {
         /// Source branch name
         source: String,
     },
+}
+
+#[derive(Subcommand)]
+enum StoreAction {
+    /// Set central server for large files
+    SetServer {
+        /// Server URL (e.g., https://store.example.com)
+        url: String,
+    },
+    /// Show current store configuration
+    Config,
+    /// Set large file threshold in MB
+    SetThreshold {
+        /// Size in megabytes
+        #[arg(default_value = "10")]
+        megabytes: usize,
+    },
+    /// Show cache statistics
+    CacheStats,
+    /// Clear cache
+    ClearCache,
 }
 
 #[tokio::main]
@@ -965,6 +992,54 @@ async fn main() -> Result<()> {
                 TemporalAction::Merge { target, source } => {
                     println!("⚠️  Temporal merge requires commit IDs - TODO: implement full merge");
                     println!("Target: {}, Source: {}", target, source);
+                }
+            }
+            println!("Happy Mugging!");
+        }
+
+        Commands::Store { action } => {
+            use mug::core::store_manager::{StoreManager, StoreConfig};
+            
+            let config = StoreConfig::default();
+            let mut manager = StoreManager::new(config);
+            
+            match action {
+                StoreAction::SetServer { url } => {
+                    println!("✓ Central server configured: {}", url);
+                    println!("Large files (>10MB) will be stored centrally");
+                    println!("Local cache: .mug/cache/ (1GB max)");
+                    manager.set_central_server(url);
+                }
+                StoreAction::Config => {
+                    println!("Store Configuration:");
+                    println!("  Large file threshold: {}MB", manager.large_file_threshold() / (1024 * 1024));
+                    if let Some(server) = manager.central_server() {
+                        println!("  Central server: {}", server);
+                    } else {
+                        println!("  Central server: (not configured)");
+                    }
+                    println!("  Cache directory: .mug/cache/");
+                    println!("  Cache policy: LRU");
+                }
+                StoreAction::SetThreshold { megabytes } => {
+                    let bytes = megabytes * 1024 * 1024;
+                    manager.set_large_file_threshold(bytes);
+                    println!("✓ Threshold set to {}MB", megabytes);
+                    println!("Files >= {}MB will use central storage", megabytes);
+                }
+                StoreAction::CacheStats => {
+                    let stats = manager.cache_stats();
+                    let size = manager.cache_size()?;
+                    println!("Cache Statistics:");
+                    println!("  Hits: {}", stats.hits);
+                    println!("  Misses: {}", stats.misses);
+                    println!("  Evictions: {}", stats.evictions);
+                    println!("  Current size: {:.2}MB", size as f64 / (1024.0 * 1024.0));
+                    println!("  Max size: 1.0GB");
+                }
+                StoreAction::ClearCache => {
+                    manager.clear_cache()?;
+                    println!("✓ Cache cleared");
                 }
             }
             println!("Happy Mugging!");
