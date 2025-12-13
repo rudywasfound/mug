@@ -17,9 +17,11 @@ MUG is built on modern technologies:
 
 ## Features
 
-MUG implements 35+ primary commands across 7 major feature categories:
+MUG is a **hybrid VCS** combining distributed version control with novel research-driven features.
 
-### Repository Operations
+### Core Capabilities (35+ commands)
+
+#### Repository Operations
 - `mug init` - Initialize a new repository
 - `mug add` - Stage files (add to index)
 - `mug remove` - Unstage files
@@ -28,20 +30,20 @@ MUG implements 35+ primary commands across 7 major feature categories:
 - `mug show` - Show commit details
 - `mug status` - Show working tree status
 
-### Branching & Merging
+#### Branching & Merging
 - `mug branch` - Create branches
 - `mug branches` - List all branches
 - `mug checkout` - Switch branches
 - `mug merge` - Merge branches with fast-forward detection
 - `mug rebase` - Rebase current branch onto another (interactive or standard)
 
-### File Operations
+#### File Operations
 - `mug rm` - Remove files
 - `mug mv` - Move/rename files
 - `mug restore` - Restore files
 - `mug grep` - Parallel regex search across files
 
-### Commit History Control
+#### Commit History Control
 - `mug reset` - Reset operations (soft/mixed/hard)
 - `mug diff` - Show diffs between commits
 - `mug cherry-pick` - Cherry-pick a commit onto current branch
@@ -50,17 +52,17 @@ MUG implements 35+ primary commands across 7 major feature categories:
 - `mug bisect-good` - Mark commit as good during bisect
 - `mug bisect-bad` - Mark commit as bad during bisect
 
-### Tag Management
+#### Tag Management
 - `mug tag` - Create annotated tags
 - `mug tags` - List tags
 - `mug delete-tag` - Delete tags
 
-### Stash Operations
+#### Stash Operations
 - `mug stash` - Save work-in-progress
 - `mug stash-list` - List stashes
 - `mug stash-pop` - Apply and remove stash
 
-### Remote & Sync Operations
+#### Remote & Sync Operations
 - `mug remote add` - Add remote repositories
 - `mug remote list` - List remotes
 - `mug remote remove` - Remove remotes
@@ -72,16 +74,50 @@ MUG implements 35+ primary commands across 7 major feature categories:
 - `mug clone` - Clone repository
 - `mug serve` - Start HTTP server for remote operations
 
-### Hook System
+#### Hook System
 - 6 hook types: pre-commit, post-commit, pre-push, post-push, pre-merge, post-merge
 - Install hooks from scripts
 - Hook execution with stdout/stderr capture
 - Enable/disable hooks dynamically
 
-### Configuration & Metadata
+#### Configuration & Metadata
 - `.mugignore` - Pattern-based file exclusion with glob support
 - `.mugattributes` - File attributes (merge strategy, line endings, diffs)
 - `.mug/config.json` - Repository configuration
+
+### Hybrid VCS Features
+
+#### Git Migration
+- `mug migrate <git-repo> <mug-repo>` - Import complete Git repositories
+- Supports both loose objects and pack files
+- Extracts full commit metadata (author, message, tree, parents)
+- Converts Git branches and HEAD to MUG format
+- Tested on repositories with 20+ commits
+
+#### Cryptographic Signing
+- `mug keys generate` - Create Ed25519 keypairs
+- `mug keys import <seed>` - Import keys from base64 seed
+- `mug keys list` - List all signing keys
+- `mug keys current` - Show active key
+- Immutable audit trail with Ed25519 signatures
+- Prevents commit forgery and proves authorship
+
+#### Temporal Branching (Non-Linear History)
+- `mug temporal create <name> <commit>` - Create branch at any commit (not just tip)
+- `mug temporal list` - Show all temporal branches
+- `mug temporal show <branch>` - Visualize temporal branch structure with DAG
+- `mug temporal merge <target> <source>` - Merge branches at any point in history
+- Solves real-world problems: security patches, backports, multi-version support
+
+#### Centralized Large File Storage
+- `mug store set-server <url>` - Configure central object server
+- `mug store set-threshold <MB>` - Set file size threshold (default 10MB)
+- `mug store config` - Show current storage configuration
+- `mug store cache-stats` - View LRU cache metrics
+- `mug store clear-cache` - Clear local cache
+- Hybrid approach: commits locally, large files on server
+- LRU cache (1GB default) for transparent performance
+- Solves distributed VCS bloat with binary files
 
 ## Quick Start
 
@@ -238,19 +274,25 @@ MUG is optimized for speed:
 
 ## Status
 
-**Alpha 1 (Current)** - Stable with all core features implemented
+**Alpha 1 (Current)** - Stable with all core and hybrid features implemented
 
+### Core Features
 - ✅ Repository initialization
 - ✅ Complete staging and commit workflow
 - ✅ Branch creation, switching, and merging
 - ✅ Interactive and standard rebase
 - ✅ Remote operations (push, pull, fetch, clone)
 - ✅ HTTP server mode for remote access
-- ✅ Git repository migration
 - ✅ Full hook system
 - ✅ Tag management
 - ✅ Stash operations
 - ✅ Cherry-pick and bisect
+
+### Hybrid VCS Features
+- ✅ Git repository migration (loose objects + pack files)
+- ✅ Cryptographic signing (Ed25519)
+- ✅ Temporal branching (non-linear history)
+- ✅ Centralized large file storage with LRU cache
 
 ## Design Philosophy
 
@@ -259,7 +301,14 @@ MUG is optimized for speed:
 3. **Fast by default** - No tree walking, clever indexing
 4. **Simple interface** - Clean commands, clear semantics
 5. **Complete feature set** - All essential VCS operations
-6. **Cheeky attitude** - Serious functionality, playful personality
+6. **Research-driven** - Novel branching, cryptographic signing, hybrid storage
+
+## Documentation
+
+- **FEATURE_SUMMARY.md** - Complete feature overview and CLI reference
+- **HYBRID_VCS.md** - Architecture design decisions and innovation details
+- **RESEARCH_VCS_MODELS.md** - VCS types analysis and comparison
+- **MIGRATION_COMPLETE.md** - Git migration implementation details
 
 ## Development
 
