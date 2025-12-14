@@ -3,12 +3,14 @@ pub mod compression;
 pub mod pack_file;
 pub mod chunker;
 pub mod packer;
+pub mod pack_builder;
 
 pub use chunk::{Chunk, ChunkIndex, ContentAddressedStore};
 pub use compression::Compressor;
 pub use pack_file::{PackFile, PackWriter, PackReader};
 pub use chunker::{Chunker, ChunkStats};
 pub use packer::{RepositoryPacker, PackingStats};
+pub use pack_builder::{PackBuilder, PackManifest, PackInfo};
 
 /// Pack metadata for tracking stored chunks
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

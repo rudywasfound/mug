@@ -1069,7 +1069,7 @@ async fn main() -> Result<()> {
         }
 
         Commands::Pack { action } => {
-            use mug::pack::RepositoryPacker;
+            use mug::pack::{RepositoryPacker, PackBuilder};
             
             match action {
                 PackAction::Create { output } => {
@@ -1079,20 +1079,28 @@ async fn main() -> Result<()> {
                     println!("  Deduplication: content-addressed blocks (rolling hash)");
                     println!("");
                     
-                    let packer = RepositoryPacker::new(std::path::Path::new("."))
-                        .unwrap_or_else(|_| {
-                            eprintln!("Error: Could not initialize packer");
-                            std::process::exit(1);
-                        });
+                    let builder = PackBuilder::new(
+                        std::path::Path::new("."),
+                        2_000_000_000  // 2GB target pack size
+                    ).unwrap_or_else(|_| {
+                        eprintln!("Error: Could not initialize pack builder");
+                        std::process::exit(1);
+                    });
                     
-                    match packer.pack_all() {
-                        Ok(stats) => {
-                            stats.display();
-                            println!("");
-                            let pack_count = packer.estimate_pack_count(2_000_000_000).unwrap_or(1);
-                            println!("Estimated {} pack files", pack_count);
+                    match builder.build_packs(std::path::Path::new(&output)) {
+                        Ok(manifest) => {
+                            manifest.display();
+                            
+                            // Save manifest
+                            let manifest_path = std::path::Path::new(&output).join("manifest.json");
+                            if let Err(e) = manifest.save(&manifest_path) {
+                                eprintln!("Warning: Could not save manifest: {}", e);
+                            } else {
+                                println!("");
+                                println!("✓ Manifest saved to {}", manifest_path.display());
+                            }
                         }
-                        Err(e) => eprintln!("Error analyzing repository: {}", e),
+                        Err(e) => eprintln!("Error building packs: {}", e),
                     }
                 }
                 PackAction::Stats { pack_file } => {
