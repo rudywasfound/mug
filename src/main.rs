@@ -1069,20 +1069,31 @@ async fn main() -> Result<()> {
         }
 
         Commands::Pack { action } => {
-            use mug::pack::PackMetadata;
+            use mug::pack::RepositoryPacker;
             
             match action {
                 PackAction::Create { output } => {
                     println!("✓ Creating pack files from repository objects...");
                     println!("  Output directory: {}", output);
                     println!("  Compression: zstd (10x faster than zlib)");
-                    println!("  Deduplication: content-addressed blocks");
+                    println!("  Deduplication: content-addressed blocks (rolling hash)");
                     println!("");
-                    println!("Pack files created:");
-                    println!("  pack-001.mug - 2.3GB (8.5GB uncompressed)");
-                    println!("  pack-002.mug - 1.9GB (7.2GB uncompressed)");
-                    println!("  Total compression: 73.5%");
-                    println!("  Deduplication ratio: 35%");
+                    
+                    let packer = RepositoryPacker::new(std::path::Path::new("."))
+                        .unwrap_or_else(|_| {
+                            eprintln!("Error: Could not initialize packer");
+                            std::process::exit(1);
+                        });
+                    
+                    match packer.pack_all() {
+                        Ok(stats) => {
+                            stats.display();
+                            println!("");
+                            let pack_count = packer.estimate_pack_count(2_000_000_000).unwrap_or(1);
+                            println!("Estimated {} pack files", pack_count);
+                        }
+                        Err(e) => eprintln!("Error analyzing repository: {}", e),
+                    }
                 }
                 PackAction::Stats { pack_file } => {
                     println!("Pack File Statistics: {}", pack_file);
@@ -1094,15 +1105,19 @@ async fn main() -> Result<()> {
                 }
                 PackAction::Dedup => {
                     println!("Repository Deduplication Analysis:");
-                    println!("  Total objects: 2,548,921");
-                    println!("  Unique content: 1,654,598");
-                    println!("  Deduplication ratio: 35.1%");
-                    println!("  Savings: 3.2TB");
-                    println!("");
-                    println!("Top duplicated patterns:");
-                    println!("  1. node_modules/ content - 1.2TB saved");
-                    println!("  2. Build artifacts - 890GB saved");
-                    println!("  3. Version diffs - 1.1TB saved");
+                    
+                    let packer = RepositoryPacker::new(std::path::Path::new("."))
+                        .unwrap_or_else(|_| {
+                            eprintln!("Error: Could not initialize packer");
+                            std::process::exit(1);
+                        });
+                    
+                    match packer.pack_all() {
+                        Ok(stats) => {
+                            stats.display();
+                        }
+                        Err(e) => eprintln!("Error analyzing repository: {}", e),
+                    }
                 }
             }
             println!("Happy Mugging!");
