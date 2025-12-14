@@ -1,68 +1,62 @@
-# MUG: Hybrid VCS - Complete Feature Summary
+# MUG: Hybrid VCS - Feature Summary
 
 ## Overview
 
-MUG is not Git 2.0. It's a **research-driven version control system** that combines:
-1. **Distributed VCS** (full history, offline work, Git migration)
-2. **Novel Features** (temporal branches, cryptographic signing)
-3. **Centralized Storage** (solution for large files)
+MUG is a research-driven version control system that combines:
+1. Distributed VCS (full history, offline work, Git migration)
+2. Novel Features (temporal branches, cryptographic signing)
+3. Centralized Storage (solution for large files)
 
 Built in Rust for performance and safety.
 
----
-
 ## Core Features Implemented
 
-### ✅ Git Compatibility
-- **Migration**: `mug migrate /path/to/git /path/to/mug`
+Git Compatibility:
+- Migration: `mug migrate /path/to/git /path/to/mug`
 - Imports all commits with full metadata
 - Parses zlib-compressed Git objects
 - Extracts author, messages, parent relationships
 - Creates proper BranchRef and HEAD pointers
 - Tested on 33+ commit repositories
 
-### ✅ Cryptographic Signing
+Cryptographic Signing:
 ```bash
-mug keys generate              # Create Ed25519 keypair
-mug keys import <seed>         # Import from base64 seed
+mug keys generate
+mug keys import <seed>
 ```
 - All commits can be signed with Ed25519
 - Immutable audit trail
 - Proves authorship, prevents forgery
 - Base64-encoded keys for portability
 
-### ✅ Temporal Branching
+Temporal Branching:
 ```bash
-mug temporal create main <commit>      # Create at any commit
-mug temporal list                      # Show all branches
-mug temporal show <branch>             # Visualize DAG
-mug temporal merge <target> <source>   # Merge at any point
+mug temporal create main <commit>
+mug temporal list
+mug temporal show <branch>
+mug temporal merge <target> <source>
 ```
-- Branches fork/merge at **any point** in history
+- Branches fork/merge at any point in history
 - Solves real-world workflows: backports, security patches
 - Explicit merge point tracking
 - DAG visualization with merge markers
 
-### ✅ Centralized Large File Storage
+Centralized Large File Storage:
 ```bash
-mug store set-server <url>             # Configure CDN/server
-mug store set-threshold <MB>           # Files >= MB go central
-mug store cache-stats                  # View LRU cache metrics
-mug store clear-cache                  # Manage cache
+mug store set-server <url>
+mug store set-threshold <MB>
+mug store cache-stats
+mug store clear-cache
 ```
 - Hybrid model: local commits + central files
 - Files < threshold (10MB default): local `.mug/objects`
 - Files >= threshold: streamed from central server
 - LRU cache (1GB default) for performance
 - Works offline for commits, streams files on-demand
-- Solves Git's bloat problem
-
----
 
 ## Architecture
 
-```
-MUG Repository Structure
+MUG Repository Structure:
 ├── .mug/
 │   ├── db/                  # RocksDB: commits, branches, metadata
 │   ├── objects/             # Local object store (small files)
@@ -71,190 +65,182 @@ MUG Repository Structure
 │   └── temporal/            # Temporal branch tracking
 ├── .mugignore               # Ignore patterns
 └── (working directory)
-```
 
-### Technology Stack
-- **Language**: Rust (2024 edition)
-- **Compression**: flate2 (zlib)
-- **Cryptography**: ed25519-dalek
-- **Database**: sled (RocksDB-compatible)
-- **Serialization**: serde_json
-- **Parallel**: rayon
-- **Web**: actix-web (for server)
-
----
+Technology Stack:
+- Language: Rust
+- Compression: flate2 (zlib)
+- Cryptography: ed25519-dalek
+- Database: sled (RocksDB-compatible)
+- Serialization: serde_json
+- Parallel: rayon
+- Web: actix-web (for server)
 
 ## CLI Reference
 
-### Basic Commands
+Basic Commands:
 ```bash
-mug init .                     # Initialize repo
-mug add .                      # Stage files
-mug commit -m "message"        # Commit
-mug log                        # View history
-mug status                     # Show status
+mug init .
+mug add .
+mug commit -m "message"
+mug log
+mug status
 ```
 
-### Branching
+Branching:
 ```bash
-mug branch feature             # Create branch
-mug branches                   # List branches
-mug checkout main              # Switch branch
-mug temporal create fix <hash> # Create at commit
+mug branch feature
+mug branches
+mug checkout main
+mug temporal create fix <hash>
 ```
 
-### Cryptography
+Cryptography:
 ```bash
-mug keys generate              # New keypair
-mug keys import <seed>         # Import
-mug keys list                  # All keys
-mug keys current               # Active key
+mug keys generate
+mug keys import <seed>
+mug keys list
+mug keys current
 ```
 
-### Temporal (Non-linear)
+Temporal:
 ```bash
-mug temporal create <name> <commit>    # Fork at commit
-mug temporal list                      # Show all
-mug temporal show <branch>             # Visualize
-mug temporal merge <target> <source>   # Merge anytime
+mug temporal create <name> <commit>
+mug temporal list
+mug temporal show <branch>
+mug temporal merge <target> <source>
 ```
 
-### Storage
+Storage:
 ```bash
-mug store config               # Show settings
-mug store set-server <url>     # Central server
-mug store set-threshold 50     # 50MB threshold
-mug store cache-stats          # Cache metrics
-mug store clear-cache          # Clear LRU
+mug store config
+mug store set-server <url>
+mug store set-threshold 50
+mug store cache-stats
+mug store clear-cache
 ```
 
-### Migration
+Migration:
 ```bash
-mug migrate /git/repo /mug/repo        # Import Git repo
+mug migrate /git/repo /mug/repo
 ```
-
----
 
 ## Performance Characteristics
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| `mug init` | <10ms | Directory creation |
-| `mug add` | O(n) | Parallel file processing |
-| `mug commit` | <100ms | Ed25519 signing fast |
-| `mug log` | O(depth) | Follows parent chain |
-| `mug temporal create` | <10ms | DB write only |
-| Git migration | <1s | 33 commits, decompress overhead |
+mug init: <10ms (directory creation)
+mug add: O(n) (parallel file processing)
+mug commit: <100ms (Ed25519 signing fast)
+mug log: O(depth) (follows parent chain)
+mug temporal create: <10ms (DB write only)
+Git migration: <1s (33 commits, decompress overhead)
 
 Tested on:
-- **Repo Size**: 10MB (mug itself)
-- **Commits**: 33
-- **Objects**: 40+ (blobs, trees, commits)
+- Repo Size: 10MB (mug itself)
+- Commits: 33 commits with full history
+- Files: 60+ Rust source files
+- Database: sled (embedded)
 
----
+## CLI Commands (35+)
 
-## Innovation vs. Git
+Core:
+- init, add, remove, commit, log, show, status
 
-| Aspect | Git | MUG |
-|--------|-----|-----|
-| **Large Files** | ❌ (bloats repo) | ✅ (central store) |
-| **Offline** | ✅ | ✅ |
-| **Signing** | Optional (GPG) | Default (Ed25519) |
-| **Non-linear branches** | ❌ (linear only) | ✅ (temporal) |
-| **Distributed** | ✅ | ✅ |
-| **Hybrid model** | Manual (LFS) | Native |
+Branching:
+- branch, branches, checkout, merge, rebase
 
----
+File Operations:
+- rm, mv, restore, grep, diff
 
-## Research Foundation
+History:
+- reset, cherry-pick, cherry-pick-range, bisect-start, bisect-good, bisect-bad
 
-This VCS combines insights from:
-- **ETH Zurich VCS Research** - Novel branching strategies
-- **Git Internals** - Object model, history tracking
-- **Perforce** - Centralized with client efficiency
-- **IPFS/Content Addressing** - Hash-based integrity
-- **CRDT Literature** - Future conflict-free merging
+Tags:
+- tag, tags, delete-tag
 
-Documentation:
-- `HYBRID_VCS.md` - Architecture decisions
-- `RESEARCH_VCS_MODELS.md` - VCS type analysis
-- `MIGRATION_COMPLETE.md` - Git import details
+Stash:
+- stash, stash-pop, stash-list
 
----
+Remote:
+- remote add/list/remove/set-default/update-url, push, pull, fetch, clone, serve
 
-## Known Limitations
+Keys:
+- keys generate/list/import/current
 
-1. **Git pack files** - Not yet supported (store compressed)
-2. **Submodules** - Not implemented
-3. **Shallow clones** - Future enhancement
-4. **Atomic transactions** - Single-commit semantics only
-5. **Schema-based commits** - Planned, not implemented
+Temporal:
+- temporal create/list/show/merge
 
----
+Store:
+- store set-server/set-threshold/config/cache-stats/clear-cache
 
-## Future Work
+Configuration:
+- config set/get/list
 
-### Short-term
-- [ ] Pack file decompression
-- [ ] Remote tracking branches
-- [ ] Tag imports from Git
-- [ ] Central server reference implementation
+Maintenance:
+- migrate, verify, gc, reflog, update-ref
 
-### Medium-term
-- [ ] Schema-based structured commits
-- [ ] CRDT-based conflict-free merging
-- [ ] P2P replication (DHT)
-- [ ] Atomic multi-commit transactions
+Pack:
+- pack create/stats/dedup/verify
 
-### Long-term
-- [ ] IPFS integration
-- [ ] Zero-knowledge proofs for verification
-- [ ] Blockchain-backed audit trail
-- [ ] Distributed consensus on history
+## Features Status
 
----
+Implemented:
+- Full Git compatibility and migration
+- Cryptographic signing with Ed25519
+- Temporal branching (non-linear history)
+- Centralized large file storage with LRU cache
+- 35+ CLI commands
+- Hook system (pre/post commit, push, merge)
+- Interactive rebase with TUI
+- Bisect for bug finding
+- Stash operations
+- Tag management
+- Cherry-pick and cherry-pick-range
+- Remote operations (push, pull, fetch, clone)
+- HTTP server mode
+- Repository verification and garbage collection
 
-## Getting Started
+## Design Philosophy
 
-```bash
-# Initialize a MUG repo
-mug init myproject
-cd myproject
+1. Minimal metadata - Only track what's necessary
+2. Content-addressed - Use hashes as the source of truth
+3. Fast by default - No tree walking, clever indexing
+4. Simple interface - Clean commands, clear semantics
+5. Complete feature set - All essential VCS operations
+6. Research-driven - Novel branching, cryptographic signing, hybrid storage
 
-# Add files
-echo "hello" > hello.txt
-mug add .
+## Use Cases
 
-# Commit with crypto
-mug keys generate    # Save seed securely
-mug commit -m "Initial commit"
+Git Migration:
+- Import existing Git repositories to MUG format
+- Preserve full history and metadata
+- Supports both loose objects and pack files
 
-# View history
-mug log
+Secure Collaboration:
+- Cryptographic signing of commits
+- Immutable audit trail
+- Proves authorship
 
-# Create temporal branch (backport to old version)
-mug temporal create v1-fix abc123def
-```
+Complex Workflows:
+- Temporal branching for backports
+- Non-linear history for multi-version support
+- Security patches across versions
 
-For Git projects:
-```bash
-mug migrate /existing/git/repo /new/mug/repo
-cd /new/mug/repo
-mug log    # See all history!
-```
+Large File Management:
+- Hybrid local/central storage
+- Transparent LRU caching
+- Prevents repository bloat
 
----
+## Limitations
 
-## Conclusion
+Server Implementation: Basic HTTP protocol, not full Git wire protocol
+Pack File Optimization: Manual pack creation, no automatic optimization
+Shallow Clone: Not yet implemented
+Submodules: Not yet implemented
 
-MUG demonstrates that VCS design is still an open research area. By combining:
-- Proven distributed model (Git)
-- Practical hybrid approach (centralized files)
-- Novel branching (temporal)
-- Cryptographic verification (by default)
+## Future Enhancements
 
-We get a system that solves real problems (large files, signing, backports) while maintaining Git's strengths (offline, history, speed).
-
----
-
-Status: **Alpha 1.0** - Core features complete, production-ready for standard workflows.
+Automatic pack file creation on GC
+Shallow clone support
+Submodule support
+Advanced merge strategies (ours, theirs, recursive)
+Signed push with cryptographic verification
+Web UI for repository browsing

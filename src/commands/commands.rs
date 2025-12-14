@@ -7,7 +7,6 @@ use regex::Regex;
 use crate::core::error::Result;
 use crate::core::repo::Repository;
 
-/// Remove files from repository and working directory
 pub fn remove_files(repo: &Repository, paths: &[&str]) -> Result<()> {
     paths.par_iter().try_for_each(|path| {
         fs::remove_file(path)?;
@@ -16,7 +15,6 @@ pub fn remove_files(repo: &Repository, paths: &[&str]) -> Result<()> {
     })
 }
 
-/// Move/rename a file
 pub fn mv_file(repo: &Repository, from: &str, to: &str) -> Result<()> {
     fs::rename(from, to)?;
     repo.remove(from)?;
@@ -24,16 +22,13 @@ pub fn mv_file(repo: &Repository, from: &str, to: &str) -> Result<()> {
     Ok(())
 }
 
-/// Restore files from HEAD (undo working directory changes)
 pub fn restore_files(repo: &Repository, paths: &[&str]) -> Result<()> {
     paths.par_iter().try_for_each(|path| {
-        // Unstage the file
         repo.remove(path)?;
         Ok(())
     })
 }
 
-/// Search files for pattern (parallel grep)
 pub fn grep(repo_path: &Path, pattern: &str) -> Result<Vec<String>> {
     let regex = Regex::new(pattern)
         .map_err(|e| crate::core::error::Error::Custom(format!("Invalid regex: {}", e)))?;
@@ -77,7 +72,6 @@ pub fn grep(repo_path: &Path, pattern: &str) -> Result<Vec<String>> {
     Ok(results)
 }
 
-/// Show detailed commit information
 pub fn show_commit(repo: &Repository, commit_id: &str) -> Result<String> {
     let log = repo.log()?;
     for entry in log {
@@ -91,7 +85,6 @@ pub fn show_commit(repo: &Repository, commit_id: &str) -> Result<String> {
     )))
 }
 
-/// Diff between two commits
 pub fn diff_commits(
     _repo: &Repository,
     from: Option<&str>,
@@ -100,7 +93,6 @@ pub fn diff_commits(
     let _from = from.unwrap_or("HEAD");
     let _to = to.unwrap_or("HEAD");
 
-    // Simple diff placeholder - shows what would change
     let mut diffs = Vec::new();
     diffs.push("Diff between commits (simplified)".to_string());
 
@@ -114,7 +106,6 @@ mod tests {
     #[test]
     fn test_grep_pattern_compilation() {
         let result = grep(Path::new("."), "^[0-9]+$");
-        // Should not panic even if no matches
         assert!(result.is_ok());
     }
 

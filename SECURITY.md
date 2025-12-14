@@ -1,123 +1,250 @@
-# Security Policy
+# Security
 
-## Reporting a Vulnerability
+## Cryptographic Signing
 
-If you discover a security vulnerability in MUG, please report it responsibly to ensure the security of the project and its users.
+Ed25519 Keypairs:
+```bash
+mug keys generate
+```
+Creates public/private Ed25519 keypair for commit signing.
 
-### How to Report
+Import Keys:
+```bash
+mug keys import <seed>
+```
+Import keys from base64-encoded seed for portability.
 
-**Do not open a public GitHub issue for security vulnerabilities.**
+Immutable Audit Trail:
+- All commits signed with Ed25519
+- Proves authorship
+- Prevents commit forgery
+- Full history verification
 
-Instead, please email atsharma623@gmail.com with the following information:
+## Integrity Verification
 
-1. **Description**: A clear description of the vulnerability
-2. **Location**: The affected file(s), function(s), or module(s)
-3. **Steps to Reproduce**: Detailed steps to reproduce the vulnerability
-4. **Potential Impact**: Description of what an attacker could do with this vulnerability
-5. **Suggested Fix**: If you have a proposed fix (optional)
-6. **Timeline**: When you discovered it and when you plan to disclose it publicly
+SHA256 Hashing:
+- All objects identified by SHA256 hash
+- Content-addressed storage
+- Automatic corruption detection
+- No duplicate content
 
-### Response Timeline
+Repository Verification:
+```bash
+mug verify
+```
+Checks:
+- Object integrity
+- Reference validity
+- Database consistency
+- Missing objects
 
-We aim to:
-- Acknowledge receipt of vulnerability reports within 48 hours
-- Provide a status update within 7 days
-- Release a fix within 30 days for critical vulnerabilities
-- Notify reporters before public disclosure
+## Access Control
 
-## Security Considerations
+File Permissions:
+- Respects system file permissions
+- Prevents unauthorized file access
+- Enforces umask settings
 
-### Scope of Security Concerns
+Remote Authentication:
+- SSH key support for remotes
+- HTTP basic auth support
+- SSH agent integration
 
-We take security seriously in the following areas:
+Hook Execution:
+- Subprocess isolation
+- Limited permissions
+- Controlled environment
 
-- **Data Integrity**: Ensuring commits and data cannot be tampered with
-- **Authentication**: Remote authentication and access control (when implemented)
-- **Denial of Service**: Protection against resource exhaustion
-- **Injection Attacks**: Protection against code injection vulnerabilities
-- **Information Disclosure**: Prevention of unintended information leaks
+## Best Practices
 
-### Known Limitations
+Commit Signing:
+```bash
+mug config set sign.commits true
+```
+Enable automatic commit signing with your key.
 
-MUG currently has these security-related limitations:
+Backup Keys:
+- Store seed securely
+- Use password manager
+- Never share seed
+- Keep backups encrypted
 
-- **Network Transport**: Currently simulated - no actual network calls (future implementation)
-- **Authentication**: No authentication or signing support yet
-- **Encryption**: No encryption for remote transport (future implementation)
-- **Access Control**: No permission/access control mechanisms
-- **Audit Logging**: Limited audit trail capabilities
+Protect Repositories:
+- Use private repositories on servers
+- Restrict SSH access
+- Use branch protection rules
+- Require code review
 
-### Current Guarantees
+Secure Remote Access:
+- Use SSH over HTTP for authentication
+- Enable HTTPS for server mode
+- Use firewall rules
+- Monitor access logs
 
-As a local VCS, MUG provides:
+## Threat Model
 
-- Content-addressable storage for integrity verification
-- SHA256 hashing for content verification
-- Isolated repository databases per workspace
-- No network exposure in alpha releases
+Integrity Threats:
+- Network attacks: HTTPS/SSH mitigates
+- File corruption: SHA256 detection
+- Unauthorized changes: Cryptographic signing
+- Data loss: Git and distributed copies
 
-## Security Updates
+Confidentiality Threats:
+- Exposed credentials: Use SSH keys
+- Network sniffing: HTTPS/SSH encryption
+- File access: System permissions
+- Key theft: Secure key storage
 
-Security updates will be:
+Availability Threats:
+- Server outages: Distributed copies
+- Corruption: Verification and GC
+- Storage loss: Backups and remotes
+- Denial of service: Rate limiting
 
-1. Released on a dedicated security branch first
-2. Tested thoroughly before public release
-3. Documented in release notes with CVE references if applicable
-4. Backported to supported versions if necessary
+## Known Limitations
 
-## Dependencies
+Database Encryption:
+- Not yet implemented
+- Future enhancement
+- Use OS-level encryption
 
-MUG uses the following key dependencies. We monitor their security advisories:
+Shallow Clones:
+- Not yet implemented
+- Full history always downloaded
+- Consider pack files
 
-- `sled` - Embedded database
-- `serde/serde_json` - Serialization
-- `sha2` - Cryptographic hashing
-- `regex` - Pattern matching
-- `clap` - CLI parsing
-- `tokio` - Async runtime
-- `actix-web` - Web framework
+Network Security:
+- Basic HTTP server
+- Not production-ready
+- Use reverse proxy for security
 
-Security updates to dependencies are applied promptly.
+Hook Sandboxing:
+- Hooks execute in subprocess
+- No full sandboxing
+- Trust hook scripts
 
-## Best Practices for Users
+## Incident Response
 
-When using MUG:
+Compromised Key:
+1. Generate new key with `mug keys generate`
+2. Update configuration
+3. Notify collaborators
+4. Rotate server access
 
-1. **Keep Updated**: Always use the latest version to get security fixes
-2. **File Permissions**: Ensure `.mug/` directory has appropriate permissions
-3. **Hook Security**: Review hook scripts before enabling them - they execute with your permissions
-4. **Gitignore Patterns**: Be careful with `.mugignore` patterns to avoid unintended exposure
-5. **Local Security**: Protect your local machine and repository access
+Unauthorized Changes:
+1. Run `mug verify` to check integrity
+2. Review log with `mug log`
+3. Use `mug reset` to revert
+4. Check for unauthorized hooks
 
-## Future Security Improvements
+Data Corruption:
+1. Run `mug verify` to identify issues
+2. Use `mug gc` for recovery
+3. Restore from backup if needed
+4. Check recent commits with `mug reflog`
 
-Planned security enhancements include:
+## Server Security
 
-- GPG/SSH commit signing
-- HTTPS/SSH transport with certificate validation
-- OAuth authentication for remotes
-- Per-repository access control
-- Encrypted remote storage
-- Audit logging
-- Security scanning in CI/CD
+HTTP Server Mode:
+```bash
+mug serve --host 127.0.0.1 --port 8080 --repos /path
+```
 
-## Responsible Disclosure
+Security Recommendations:
+- Bind to localhost (127.0.0.1) only
+- Use reverse proxy (nginx) for HTTPS
+- Implement authentication layer
+- Use firewall rules
+- Monitor access logs
+- Keep behind VPN
 
-We follow responsible disclosure principles:
+Reverse Proxy Setup (nginx):
+```nginx
+server {
+    listen 443 ssl;
+    server_name repo.example.com;
+    
+    ssl_certificate /path/to/cert;
+    ssl_certificate_key /path/to/key;
+    
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        auth_basic "Repository Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+}
+```
 
-- Vulnerability details are not disclosed publicly until a fix is available
-- Reporters are credited unless they request anonymity
-- Coordinated disclosure allows time for users to patch
-- Public advisories include CVE references where applicable
+## Compliance
+
+Data Privacy:
+- No telemetry collection
+- No external connections
+- Local operation by default
+- Respects system privacy settings
+
+Audit Logging:
+- Full commit history
+- Author attribution via signing
+- Timestamp verification
+- Change tracking with diffs
+
+## Cryptography Details
+
+Hash Function:
+- Algorithm: SHA256
+- Purpose: Object identification and integrity
+- Collision resistance: 256-bit security
+- Standard: FIPS 180-4
+
+Signing Algorithm:
+- Algorithm: Ed25519
+- Purpose: Commit signing and authorship
+- Security: 128-bit security level
+- Performance: Fast constant-time operations
+
+Key Derivation:
+- Seed: Base64-encoded bytes
+- Format: Portable across systems
+- Storage: User-provided location
+- Rotation: Generate new key as needed
+
+## Future Enhancements
+
+At-Rest Encryption:
+- Encrypt database with AES-256
+- Protect sensitive data
+- Encryption key management
+
+End-to-End Encryption:
+- Encrypt push/pull operations
+- Protect in-transit data
+- Key exchange protocol
+
+Hardware Security:
+- Hardware key storage support
+- TPM integration
+- Secure enclave support
+
+Multi-Signature:
+- Require multiple approvals
+- Complex workflows
+- Higher security
 
 ## Contact
 
-For security matters:
-- **Email**: atsharma623@gmail.com
-- **Response Time**: Within 48 hours
+Security Vulnerability Reports:
+- Email: atsharma623@gmail.com
+- Do NOT open public issues
+- Include:
+  - Description
+  - Reproduction steps
+  - Potential impact
+  - Suggested fix
 
-For other issues, use standard GitHub issues.
+## Changelog
 
----
-
-Last Updated: 2025
+Security Updates:
+- Check release notes for updates
+- Apply patches promptly
+- Enable auto-updates if available

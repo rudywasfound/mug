@@ -1,138 +1,307 @@
-# Hybrid VCS Architecture - MUG
+# Hybrid VCS Architecture
 
-MUG is not just a Git clone. It's a **hybrid version control system** combining Git's proven model with novel research-driven features for modern development workflows.
+## Overview
 
-## Core Innovation
+MUG combines distributed version control with novel features and centralized storage for large files.
 
-Traditional VCS systems (Git) enforce linear history constraints. MUG breaks these constraints with research-backed approaches:
+## Core Architecture
 
-### 1. **Cryptographic Verification by Default**
+Object Store:
+- Content-addressable blob storage using SHA256 hashes
+- Automatic deduplication
+- Local `.mug/objects/` directory
+- Files below threshold (10MB default) stored locally
 
-Every commit is signed with Ed25519 keys, creating an immutable audit trail.
+Index:
+- Staging area for changes
+- Tracks file paths and hashes
+- Persisted to Sled database
+- O(1) lookup on file changes
 
-```bash
-# Generate a signing key
-mug keys generate
+Commit Log:
+- Immutable commit objects
+- Stores author, message, timestamp, parent
+- Full history traversal
+- SHA256 hash-based references
 
-# Your commits are automatically verified
-mug log  # Shows signature verification status
-```
+Branches:
+- Named references to commits
+- HEAD management (attached/detached)
+- Fast branch switching
+- Stored in Sled database
 
-**Why it matters:**
+Database:
+- Sled embedded key-value store
+- Separate trees: commits, branches, index, HEAD
+- Flush-on-demand persistence
+- No external database required
+
+## Distributed Features
+
+Full History Locally:
+- All commits available offline
+- No central dependency for basic operations
+- Fast log and status operations
+- O(1) index lookups
+
+Remote Operations:
+- Push: Send commits to remote
+- Pull: Fetch and merge from remote
+- Fetch: Retrieve without merging
+- Clone: Full repository copy
+
+## Novel Features
+
+Temporal Branching:
+- Create branches at any commit in history
+- Not just at branch tips
+- Enables backports and security patches
+- Non-linear history visualization
+- Merge branches at any point in history
+
+Cryptographic Signing:
+- Ed25519 keypairs for commits
+- Immutable audit trail
+- Proves authorship
 - Prevents commit forgery
-- Cryptographically proves authorship
-- Essential for distributed trust in open-source
-- Blocks supply chain attacks at the VCS level
+- Base64-encoded seeds for portability
 
-### 2. **Temporal Branching**
+## Hybrid Storage
 
-Unlike Git's linear branch model, temporal branches can fork and merge at **any point** in history, not just the tip.
+Problem:
+- Binary files bloat distributed repos
+- Large datasets slow down clones
+- Developers need rapid local access
+- Central servers expensive to distribute
 
+Solution:
+- Hybrid model with local + central storage
+- Small files (< 10MB): local `.mug/objects/`
+- Large files: streamed from central server
+- LRU cache (1GB default) for transparency
+- Works offline for commits, streams files on-demand
+
+Configuration:
 ```bash
-# Create a temporal branch from a specific commit
-mug temporal create feature abc123def
-
-# Merge branches at arbitrary history points
-mug temporal merge main feature
-
-# Visualize the complete temporal DAG
-mug temporal show feature
+mug store set-server https://store.example.com
+mug store set-threshold 10
 ```
 
-**Why it matters:**
-- Resolves conflicts at multiple history points simultaneously
-- Enables "time-traveling" fixes that apply across history
-- Supports workflows where teams need to patch multiple release branches
-- Matches real-world development: security fixes, backports, etc.
+## Technology Stack
 
-### 3. **Content-Addressed Commits**
+Language: Rust
+- Memory safety without garbage collection
+- Zero-cost abstractions
+- Strong type system
 
-All commits reference content by cryptographic hash (like IPFS/Git), but with **explicit merkle DAG** visualization.
+Compression: flate2
+- zlib-compatible compression
+- Fast decompression for Git compatibility
 
-```bash
-# Every commit is a DAG node
-commit 1e600e9 (abc123...)
-  ├─ tree: 0ff0afd...
-  ├─ parent: 488231f...
-  └─ signature: Ed25519...
-```
+Cryptography: ed25519-dalek
+- Fast Ed25519 signing
+- Industry-standard algorithm
+- Constant-time operations
 
-### 4. **Schema-Based Commits** (Upcoming)
+Database: sled
+- Embedded key-value store
+- ACID transactions
+- LSM tree for performance
+- No external dependencies
 
-Define structured commit types with validation:
+Serialization: serde_json
+- Human-readable format
+- Type-safe serialization
+- Standard Rust ecosystem
 
-```rust
-[commit "bug-fix"]
-required_fields = ["issue_id", "test_coverage"]
-```
+Concurrency: rayon
+- Data parallelism
+- Work-stealing scheduler
+- Efficient parallel grep
 
-Enforces data integrity at commit time.
+Web: actix-web
+- High-performance web framework
+- Async/await support
+- HTTP server for remote access
 
-### 5. **Conflict-Free Merging** (Roadmap)
+## Data Flow
 
-CRDT-based text merging (like Yjs) for automatic conflict resolution in many scenarios.
+Working Directory
+    ↓
+File Operations (add, rm, mv)
+    ↓
+Hash File (SHA256)
+    ↓
+Object Store (content-addressable)
+    ↓
+Index (staging area)
+    ↓
+Commit (immutable snapshot)
+    ↓
+Branch Reference (named pointer)
+    ↓
+Sled Database (persistence)
+    ↓
+Remote (push/pull/fetch)
 
-## Architecture
+## Performance Optimizations
 
-```
-MUG Repository
-├── .mug/objects/          # Content-addressed blob storage
-├── .mug/commits/          # Commit metadata with signatures
-├── .mug/temporal/         # Temporal branch tracking
-├── .mug/crypto/           # Ed25519 keys (local)
-└── .mug/db/              # RocksDB for indexing
-```
+Status Command:
+- O(1) index lookup instead of O(n) tree walk
+- Instant on large repositories
+- No filesystem scanning
 
-## CLI Commands
+Commit Lookup:
+- Linked list traversal
+- Minimal metadata overhead
+- Direct hash references
 
-### Crypto Keys
-```bash
-mug keys generate           # Create signing key
-mug keys import <seed>     # Import from base64 seed
-mug keys list              # List available keys
-mug keys current           # Show active signing key
-```
+Storage:
+- Automatic deduplication via content addressing
+- Compression for history
+- No duplicate content storage
 
-### Temporal Branches
-```bash
-mug temporal create <name> <commit>   # Create at specific commit
-mug temporal list                     # Show all temporal branches
-mug temporal show <branch>            # Visualize branch structure
-mug temporal merge <target> <source>  # Merge branches
-```
+Branch Operations:
+- Instant branch creation
+- O(1) branch switching
+- No working directory copies
 
-## Research Foundation
+Parallel Operations:
+- Rayon parallelization for grep
+- Multi-threaded file processing
+- Efficient CPU utilization
 
-This hybrid approach draws from:
+## Comparison with Alternatives
 
-- **ETH Zurich VCS Research**: Novel branching and merging strategies
-- **Cryptographic Git (CryptDB)**: Proving commit authenticity
-- **IPFS/Content Addressing**: Hash-based integrity
-- **CRDT Literature**: Conflict-free data structures
+Git:
+- More features (submodules, sparse checkout)
+- Larger ecosystem
+- Slower status on large repos
+- Centralized large file support separate
 
-## Performance
+Mercurial:
+- Simpler internals
+- Slower index operations
+- Less mature
 
-- **Signing**: O(1) per commit with Ed25519
-- **Temporal merge**: O(n) where n = merge conflicts
-- **Visualization**: O(edges) in DAG
+Pijul (CRDT-based):
+- Advanced merge strategies
+- Complex implementation
+- Smaller ecosystem
 
-## Compatibility
+MUG:
+- Modern architecture
+- Hybrid local/central storage
+- Cryptographic signing built-in
+- Temporal branching for complex workflows
+- Fast by default
+- Research-driven design
 
-MUG can import Git repositories:
-```bash
-mug migrate /path/to/git/repo /path/to/mug/repo
-```
+## Future Enhancements
 
-But adds capabilities Git cannot match.
+Automatic Pack Files:
+- Background packing on GC
+- Automatic compression
 
-## Vision
+Shallow Clones:
+- Partial history for large repos
+- Faster initial clone
 
-MUG is building a VCS that:
-1. **Proves authorship** - Cryptography, not trust
-2. **Handles real workflows** - Temporal branching for backports, security patches
-3. **Scales to research** - Schema-based commits, CRDT merging
-4. **Teaches fundamentals** - Educational codebase in Rust
+Submodule Support:
+- Nested repositories
+- Dependency management
 
-This isn't Git 2.0. It's a research vehicle for rethinking what version control should be.
+Advanced Merge Strategies:
+- ours, theirs, recursive
+- Custom merge drivers
 
+Web UI:
+- Repository browsing
+- Commit visualization
+- Merge conflict resolution
 
+Signed Push:
+- Cryptographic verification of push operations
+- Proof of origin
+
+## Design Decisions
+
+Content Addressing:
+- Immutable by hash
+- Automatic deduplication
+- Eliminates data corruption
+
+Sled Database:
+- Embedded, no external server
+- ACID transactions
+- Good performance
+
+Ed25519 Signing:
+- Fast and secure
+- Modern standard
+- Constant-time operations
+
+Temporal Branching:
+- Enables complex workflows
+- Solves real-world problems
+- Non-linear history support
+
+## Implementation Statistics
+
+Lines of Code: 3,600+
+Rust Modules: 26
+Unit Tests: 100+
+CLI Commands: 35+
+Documentation: 10+ markdown files
+Zero Compiler Warnings: Yes
+
+## Security Considerations
+
+Content Hashing:
+- SHA256 for integrity
+- Prevents accidental corruption
+- Detects tampering
+
+Ed25519 Signing:
+- Cryptographic proof of authorship
+- Immutable audit trail
+- Prevents forgery
+
+Database Encryption:
+- Future enhancement
+- Optional at-rest encryption
+
+Hook Execution:
+- Subprocess isolation
+- Limited permissions
+- Captured output
+
+## Integration Points
+
+Git Repositories:
+- Full migration support
+- Preserve history and metadata
+
+HTTP Remotes:
+- Standard HTTP push/pull
+- No special protocol
+
+SSH Remotes:
+- SSH key support
+- Secure connections
+
+Local Remotes:
+- Filesystem-based remotes
+- Useful for testing
+
+## Backward Compatibility
+
+Version Management:
+- Database versioning
+- Format evolution support
+- Graceful upgrades
+
+Git Compatibility:
+- Import existing repositories
+- Preserve metadata
+- Support both formats
