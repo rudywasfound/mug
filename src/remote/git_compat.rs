@@ -115,80 +115,90 @@ fn read_git_object(object_path: &Path) -> Result<Vec<u8>> {
     Ok(content)
 }
 
-/// Import Git commits into MUG database (supports pack files)
+/// Import Git commits into MUG database using gix (gitoxide - better pack file handling)
 fn import_git_commits(git_path: &Path, mug_repo: &Repository) -> Result<()> {
     use chrono::Utc;
+    use std::collections::HashSet;
     
-    // Use git2 to open repo - handles pack files automatically
-    let git_repo = git2::Repository::open(git_path)
+    // Use gix for better performance and pack file support
+    let repo = gix::open(git_path)
         .map_err(|e| crate::core::error::Error::Custom(format!("Failed to open git repo: {}", e)))?;
 
-    let mut revwalk = git_repo.revwalk()
-        .map_err(|e| crate::core::error::Error::Custom(format!("Failed to walk commits: {}", e)))?;
-    
-    revwalk.push_head()
-        .map_err(|e| crate::core::error::Error::Custom(format!("Failed to add HEAD: {}", e)))?;
-
+    let mut visited = HashSet::new();
     let mut count = 0;
-    for oid_result in revwalk {
-        let oid = oid_result
-            .map_err(|e| crate::core::error::Error::Custom(format!("OID error: {}", e)))?;
+    
+    // Walk from HEAD and all refs - gix handles pack files automatically
+    if let Ok(head) = repo.head() {
+        if let Some(head_id) = head.id() {
+            let head_id_str = head_id.to_hex().to_string();
+            let mut queue = vec![head_id_str];
+        
+        while let Some(oid_str) = queue.pop() {
+            if visited.contains(&oid_str) {
+                continue;
+            }
+            visited.insert(oid_str.clone());
+            
+            // Parse OID from hex string
+            if let Ok(oid) = gix::ObjectId::from_hex(oid_str.as_bytes()) {
+                if let Ok(object) = repo.find_object(oid) {
+                    if let Ok(commit) = object.try_into_commit() {
+                        let commit_hash = oid_str.clone();
+                        let tree_hash = commit.tree_id()
+                            .ok()
+                            .map(|id| id.to_hex().to_string())
+                            .unwrap_or_else(|| "0000000000000000000000000000000000000000".to_string());
 
-        match git_repo.find_commit(oid) {
-            Ok(commit) => {
-                let commit_hash = oid.to_string();
-                let tree_hash = commit.tree()
-                    .map(|t| t.id().to_string())
-                    .unwrap_or_else(|_| "0000000000000000000000000000000000000000".to_string());
+                        let author_str = commit.author()
+                            .ok()
+                            .and_then(|a| std::str::from_utf8(a.name).ok())
+                            .unwrap_or("Unknown")
+                            .to_string();
 
-                let author = commit.author();
-                let author_str = format!("{}", author.name().unwrap_or("Unknown"));
+                        let message = commit.message_raw()
+                            .ok()
+                            .and_then(|b| std::str::from_utf8(&*b).ok())
+                            .map(|m| m.trim().to_string())
+                            .unwrap_or_else(|| "(no message)".to_string());
 
-                let message = commit.message()
-                    .unwrap_or("(no message)")
-                    .trim()
-                    .to_string();
+                        let mut parent_ids = commit.parent_ids();
+                        if let Some(parent_id) = parent_ids.next() {
+                            queue.push(parent_id.to_hex().to_string());
+                        }
 
-                let parent = if commit.parent_count() > 0 {
-                    Some(commit.parent(0)
-                        .map(|p| p.id().to_string())
-                        .ok())
-                } else {
-                    None
-                }.flatten();
+                        let parent_str: Option<String> = commit.parent_ids().next().map(|p| p.to_hex().to_string());
+                        let commit_json = if let Some(parent_hash) = parent_str {
+                            serde_json::json!({
+                                "id": commit_hash,
+                                "tree_hash": tree_hash,
+                                "parent": parent_hash,
+                                "author": author_str,
+                                "message": message,
+                                "timestamp": Utc::now().to_rfc3339(),
+                            })
+                        } else {
+                            serde_json::json!({
+                                "id": commit_hash,
+                                "tree_hash": tree_hash,
+                                "parent": serde_json::Value::Null,
+                                "author": author_str,
+                                "message": message,
+                                "timestamp": Utc::now().to_rfc3339(),
+                            })
+                        };
 
-                let commit_json = if let Some(parent_hash) = parent {
-                    serde_json::json!({
-                        "id": commit_hash,
-                        "tree_hash": tree_hash,
-                        "parent": parent_hash,
-                        "author": author_str,
-                        "message": message,
-                        "timestamp": Utc::now().to_rfc3339(),
-                    })
-                } else {
-                    serde_json::json!({
-                        "id": commit_hash,
-                        "tree_hash": tree_hash,
-                        "parent": serde_json::Value::Null,
-                        "author": author_str,
-                        "message": message,
-                        "timestamp": Utc::now().to_rfc3339(),
-                    })
-                };
-
-                if let Ok(serialized) = serde_json::to_vec(&commit_json) {
-                    let _ = mug_repo.get_db().set("COMMITS", commit_hash.as_bytes(), &serialized);
-                    count += 1;
+                        if let Ok(serialized) = serde_json::to_vec(&commit_json) {
+                            let _ = mug_repo.get_db().set("COMMITS", commit_hash.as_bytes(), &serialized);
+                            count += 1;
+                        }
+                    }
                 }
             }
-            Err(e) => {
-                eprintln!("[WARN] Failed to read commit {}: {}", oid, e);
-            }
+        }
         }
     }
 
-    eprintln!("[INFO] Imported {} commits from git", count);
+    eprintln!("[INFO] Imported {} commits from git using gix (native pack file support)", count);
     Ok(())
 }
 
