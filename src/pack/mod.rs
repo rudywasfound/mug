@@ -4,13 +4,17 @@ pub mod pack_file;
 pub mod chunker;
 pub mod packer;
 pub mod pack_builder;
+pub mod pack_reader;
+pub mod progress;
 
 pub use chunk::{Chunk, ChunkIndex, ContentAddressedStore};
 pub use compression::Compressor;
-pub use pack_file::{PackFile, PackWriter, PackReader};
+pub use pack_file::{PackFile, PackWriter, PackReader as OldPackReader};
 pub use chunker::{Chunker, ChunkStats};
 pub use packer::{RepositoryPacker, PackingStats};
 pub use pack_builder::{PackBuilder, PackManifest, PackInfo};
+pub use pack_reader::{PackReader, ExtractStats, VerifyStats};
+pub use progress::{Progress, Spinner};
 
 /// Pack metadata for tracking stored chunks
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

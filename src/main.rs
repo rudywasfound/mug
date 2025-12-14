@@ -443,6 +443,11 @@ enum PackAction {
     },
     /// Show compression ratio and deduplication info
     Dedup,
+    /// Verify pack integrity
+    Verify {
+        /// Manifest path
+        manifest: String,
+    },
 }
 
 #[tokio::main]
@@ -1069,7 +1074,7 @@ async fn main() -> Result<()> {
         }
 
         Commands::Pack { action } => {
-            use mug::pack::{RepositoryPacker, PackBuilder};
+            use mug::pack::{RepositoryPacker, PackBuilder, PackReader};
             
             match action {
                 PackAction::Create { output } => {
@@ -1125,6 +1130,28 @@ async fn main() -> Result<()> {
                             stats.display();
                         }
                         Err(e) => eprintln!("Error analyzing repository: {}", e),
+                    }
+                }
+                PackAction::Verify { manifest } => {
+                    println!("✓ Verifying pack integrity...");
+                    println!("");
+                    
+                    match PackReader::new(std::path::Path::new(&manifest)) {
+                        Ok(reader) => {
+                            match reader.verify(true) {
+                                Ok(stats) => {
+                                    stats.display();
+                                    if stats.is_valid() {
+                                        println!("✓ All chunks verified successfully");
+                                    } else {
+                                        println!("✗ {} invalid chunks found", stats.invalid);
+                                        std::process::exit(1);
+                                    }
+                                }
+                                Err(e) => eprintln!("Error verifying: {}", e),
+                            }
+                        }
+                        Err(e) => eprintln!("Error loading manifest: {}", e),
                     }
                 }
             }
