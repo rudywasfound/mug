@@ -1,6 +1,13 @@
-# MUG - Version Control System
+<h1 align="center">MUG – Version Control System</h1>
+<p align="center">
+  A Rust-powered version control system with Git-like functionality and modern architecture.
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.0.0--alpha.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/release-december-brightgreen">
+  <img src="https://img.shields.io/badge/license-LGPL--3.0-green" alt="License">
+</p>
 
-A Rust-powered version control system with Git-like functionality and modern architecture.
 
 ## Features
 
