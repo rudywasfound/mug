@@ -11,7 +11,7 @@
 
 ## Features
 
-MUG is a hybrid VCS combining distributed version control with additional features.
+MUG is a hybrid VCS combining distributed version control with centralized features!
 
 ### Core Commands (35+ commands)
 
