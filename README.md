@@ -1,4 +1,4 @@
-<h1 align="center">MUG – Version Control System</h1>
+<h1 align="center">MUG (Modern Unified Graph) – Version Control System</h1>
 <p align="center">
   <img src="https://github.com/rudywasfound/mug/blob/master/mug-vcs.png?raw=true" alt="Mug VCS Logo" width="400"/>
 </p>
