@@ -1,5 +1,9 @@
 <h1 align="center">MUG – Version Control System</h1>
 <p align="center">
+  <img src="https://github.com/rudywasfound/mug/blob/master/mug-vcs.png?raw=true" alt="Mug VCS Logo" width="400"/>
+</p>
+
+<p align="center">
   A Rust-powered version control system with Git-like functionality and modern architecture.
 </p>
 <p align="center">
