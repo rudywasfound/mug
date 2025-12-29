@@ -44,13 +44,8 @@ impl ObjectStore {
 
         // Skip if already exists
         if !path.exists() {
-            let blob = Blob {
-                hash: hash.clone(),
-                size: content.len() as u64,
-                content: content.to_vec(),
-            };
-            let serialized = serde_json::to_vec(&blob)?;
-            fs::write(&path, serialized)?;
+            // Write content directly without JSON encoding for efficiency
+            fs::write(&path, content)?;
         }
 
         Ok(hash)
@@ -65,9 +60,12 @@ impl ObjectStore {
     /// Retrieve a blob by hash
     pub fn get_blob(&self, hash: &str) -> Result<Blob> {
         let path = self.object_path(hash);
-        let data = fs::read(&path)?;
-        let blob = serde_json::from_slice(&data)?;
-        Ok(blob)
+        let content = fs::read(&path)?;
+        Ok(Blob {
+            hash: hash.to_string(),
+            size: content.len() as u64,
+            content,
+        })
     }
 
     /// Store a tree and return its hash

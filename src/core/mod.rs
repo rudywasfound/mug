@@ -20,6 +20,7 @@ pub mod rebase;
 pub mod rebase_tui;
 pub mod repo;
 pub mod reset;
+pub mod resume;
 pub mod shallow;
 pub mod sparse;
 pub mod stash;

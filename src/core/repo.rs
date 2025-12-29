@@ -119,11 +119,16 @@ impl Repository {
 
             if let Ok(rel_path) = path.strip_prefix(&self.root) {
                 let path_str = rel_path.to_string_lossy().to_string();
-                let hash = hash::hash_file(path)?;
-                self.store.store_file(path)?;
+                // Read file once and use for both hashing and storing
+                let content = std::fs::read(path)?;
+                let hash = hash::hash_bytes(&content);
+                self.store.store_blob(&content)?;
                 index.add(path_str, hash)?;
             }
         }
+
+        // Batch flush all index writes at once
+        index.flush()?;
 
         Ok(())
     }

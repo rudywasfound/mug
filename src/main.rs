@@ -317,6 +317,65 @@ enum Commands {
         #[arg(long, default_value = ".")]
         repos: PathBuf,
     },
+
+    /// Manage resumable operations
+    Resume {
+        #[command(subcommand)]
+        action: Option<ResumeAction>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ResumeAction {
+    /// List all resumable operations
+    List {
+        /// Show only paused operations
+        #[arg(short, long)]
+        paused: bool,
+
+        /// Show only running operations
+        #[arg(short, long)]
+        running: bool,
+
+        /// Show only completed operations
+        #[arg(short, long)]
+        completed: bool,
+
+        /// Show only failed operations
+        #[arg(short, long)]
+        failed: bool,
+    },
+
+    /// Show details of a specific operation
+    Show {
+        /// Operation ID
+        operation_id: String,
+    },
+
+    /// Resume a paused operation
+    Continue {
+        /// Operation ID to resume
+        operation_id: String,
+    },
+
+    /// Pause a running operation
+    Pause {
+        /// Operation ID to pause
+        operation_id: String,
+    },
+
+    /// Delete an operation from history
+    Delete {
+        /// Operation ID to delete
+        operation_id: String,
+    },
+
+    /// Clean up old completed/failed operations
+    Cleanup {
+        /// Delete operations older than this many days
+        #[arg(long, default_value = "30")]
+        days: i64,
+    },
 }
 
 #[derive(Subcommand)]
@@ -481,18 +540,21 @@ async fn main() -> Result<()> {
         }
 
         Commands::Status => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let _status = repo.status()?;
-
-            println!(
-                "On branch: {}",
-                repo.current_branch()?.unwrap_or("main".to_string())
-            );
-            println!("Working directory status displayed");
-            println!("Happy Mugging!");
+            
+            let branch = repo.current_branch()?.unwrap_or("main".to_string());
+            let changes = vec![]; // TODO: Parse actual changes from status
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_status(&branch, &changes));
         }
 
         Commands::Commit { message, author } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             
             // Use provided author or fallback to config
@@ -504,21 +566,71 @@ async fn main() -> Result<()> {
             };
             
             let commit_id = repo.commit(author_name, message)?;
-            println!("Committed: {}", mug::core::hash::short_hash(&commit_id));
-            println!("Happy Mugging!");
+            let short_hash = mug::core::hash::short_hash(&commit_id);
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Commit created: {}", short_hash)));
         }
 
         Commands::Log { oneline } => {
+            use mug::ui::formatter::{UnicodeFormatter, CommitInfo};
+            
             let repo = Repository::open(".")?;
             let commits = repo.log()?;
-            for commit in commits {
-                if oneline {
-                    println!("{}", commit.lines().next().unwrap_or(""));
-                } else {
-                    println!("{}", commit);
-                }
-            }
             
+            if oneline {
+                // Simple oneline output
+                for commit in commits {
+                    println!("{}", commit.lines().next().unwrap_or(""));
+                }
+            } else {
+                // Beautiful Unicode output
+                let formatter = UnicodeFormatter::new(true, true);
+                let mut commit_infos = Vec::new();
+                
+                for (i, commit) in commits.iter().enumerate() {
+                    let lines: Vec<&str> = commit.lines().collect();
+                    
+                    // Parse commit format: "commit <hash>\nAuthor: <author>\nDate: <date>\n\n<message>"
+                    let hash = if let Some(first) = lines.first() {
+                        first.replace("commit ", "").to_string()
+                    } else {
+                        "unknown".to_string()
+                    };
+                    
+                    let author = lines.iter()
+                        .find(|l| l.starts_with("Author:"))
+                        .map(|l| l.replace("Author: ", "").trim().to_string())
+                        .unwrap_or("Unknown".to_string());
+                    
+                    let date = lines.iter()
+                        .find(|l| l.starts_with("Date:"))
+                        .map(|l| l.replace("Date: ", "").trim().to_string())
+                        .unwrap_or("Unknown".to_string());
+                    
+                    let message = lines.iter()
+                        .skip_while(|l| !l.is_empty())
+                        .skip(1)
+                        .next()
+                        .unwrap_or(&"")
+                        .trim()
+                        .to_string();
+                    
+                    let is_head = i == 0;
+                    
+                    commit_infos.push(CommitInfo {
+                        hash,
+                        author,
+                        date,
+                        message,
+                        is_head,
+                        branch: None,
+                    });
+                }
+                
+                let output = formatter.format_log(&commit_infos);
+                println!("{}", output);
+            }
         }
 
         Commands::Show { commit } => {
@@ -540,55 +652,84 @@ async fn main() -> Result<()> {
         }
 
         Commands::Branch { name } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             repo.create_branch(name.clone())?;
-            println!("Created branch: {}", name);
-            println!("Happy Mugging!");
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Created branch: {}", name)));
         }
 
         Commands::Branches => {
+            use mug::ui::{UnicodeFormatter, select_branch_interactive};
+            
             let repo = Repository::open(".")?;
             let current = repo.current_branch()?;
             let branches = repo.branches()?;
-            for branch in branches {
-                let marker = if Some(&branch) == current.as_ref() {
-                    "* "
+            
+            let current_str = current.unwrap_or("main".to_string());
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_branch_list(&current_str, &branches));
+            
+            // Prompt for interactive selection
+            if let Some(selected_branch) = select_branch_interactive(branches.clone(), current_str.clone()) {
+                if selected_branch != current_str {
+                    match repo.checkout(selected_branch.clone()) {
+                        Ok(_) => {
+                            println!("{}", formatter.format_success(&format!("Switched to branch: {}", selected_branch)));
+                        }
+                        Err(e) => {
+                            println!("{}", formatter.format_error(&format!("Failed to switch: {}", e)));
+                        }
+                    }
                 } else {
-                    "  "
-                };
-                println!("{}{}", marker, branch);
+                    println!("{}", formatter.format_warning("Already on this branch"));
+                }
             }
-            println!("Happy Mugging!");
         }
 
         Commands::Checkout { branch } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             repo.checkout(branch.clone())?;
-            println!("Switched to branch: {}", branch);
-            println!("Happy Mugging!");
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Switched to branch: {}", branch)));
         }
 
         Commands::Rm { paths } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let path_refs: Vec<&str> = paths.iter().map(|s| s.as_str()).collect();
             mug::commands::remove_files(&repo, &path_refs)?;
-            println!("Removed {} files", paths.len());
-            println!("Happy Mugging!");
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Removed {} files", paths.len())));
         }
 
         Commands::Mv { from, to } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             mug::commands::mv_file(&repo, &from, &to)?;
-            println!("Moved {} to {}", from, to);
-            println!("Happy Mugging!");
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Moved {} to {}", from, to)));
         }
 
         Commands::Restore { paths } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let path_refs: Vec<&str> = paths.iter().map(|s| s.as_str()).collect();
             mug::commands::restore_files(&repo, &path_refs)?;
-            println!("Restored {} files", paths.len());
-            println!("Happy Mugging!");
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Restored {} files", paths.len())));
         }
 
         Commands::Diff { from, to } => {
@@ -613,6 +754,8 @@ async fn main() -> Result<()> {
         }
 
         Commands::Tag { name, message } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let tag_manager = mug::core::tag::TagManager::new(repo.get_db().clone());
 
@@ -634,8 +777,8 @@ async fn main() -> Result<()> {
                 tag_manager.create(name.clone(), head_commit.to_string())?;
             }
 
-            println!("Created tag: {}", name);
-            println!("Happy Mugging!");
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Created tag: {}", name)));
         }
 
         Commands::Tags => {
@@ -658,29 +801,36 @@ async fn main() -> Result<()> {
         }
 
         Commands::DeleteTag { name } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let tag_manager = mug::core::tag::TagManager::new(repo.get_db().clone());
             tag_manager.delete(&name)?;
-            println!("Deleted tag: {}", name);
-            println!("Happy Mugging!");
+            
+            let formatter = UnicodeFormatter::new(true, true);
+            println!("{}", formatter.format_success(&format!("Deleted tag: {}", name)));
         }
 
         Commands::Merge { branch } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let result = mug::core::merge::merge(&repo, &branch, mug::core::merge::MergeStrategy::Simple)?;
 
+            let formatter = UnicodeFormatter::new(true, true);
             if result.merged {
-                println!("{}", result.message);
+                println!("{}", formatter.format_success(&result.message));
             } else {
-                println!("Merge failed: {}", result.message);
+                println!("{}", formatter.format_error(&format!("Merge failed: {}", result.message)));
                 for conflict in result.conflicts {
-                    println!("  Conflict: {}", conflict);
+                    println!("  {}", formatter.format_warning(&format!("Conflict: {}", conflict)));
                 }
             }
-            println!("Happy Mugging!");
         }
 
         Commands::Rebase { target, interactive } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let strategy = if interactive {
                 mug::core::rebase::RebaseStrategy::Interactive
@@ -689,31 +839,32 @@ async fn main() -> Result<()> {
             };
             let result = mug::core::rebase::rebase(&repo, &target, strategy)?;
 
+            let formatter = UnicodeFormatter::new(true, true);
             if result.success {
-                println!("{}", result.message);
-                println!("Applied {} commits", result.applied);
+                println!("{}", formatter.format_success(&result.message));
+                println!("{}", formatter.format_success(&format!("Applied {} commits", result.applied)));
             } else {
-                println!("Rebase encountered conflicts:");
+                println!("{}", formatter.format_error("Rebase encountered conflicts:"));
                 for conflict in result.conflicts {
-                    println!("  {}", conflict);
+                    println!("  {}", formatter.format_warning(&conflict));
                 }
-                println!("Applied {} commits before conflict", result.applied);
+                println!("{}", formatter.format_warning(&format!("Applied {} commits before conflict", result.applied)));
             }
-            println!("Happy Mugging!");
         }
 
         Commands::CherryPick { commit } => {
+            use mug::ui::UnicodeFormatter;
+            
             let repo = Repository::open(".")?;
             let result = mug::core::cherry_pick::cherry_pick(&repo, &commit)?;
 
+            let formatter = UnicodeFormatter::new(true, true);
             if result.success {
-                println!("{}", result.message);
-                println!("New commit: {}", result.new_commit);
-                println!("Happy Mugging!");
+                println!("{}", formatter.format_success(&result.message));
+                println!("{}", formatter.format_success(&format!("New commit: {}", result.new_commit)));
             } else {
-                println!("Cherry-pick failed: {}", result.message);
+                println!("{}", formatter.format_error(&format!("Cherry-pick failed: {}", result.message)));
             }
-            
         }
 
         Commands::CherryPickRange { start, end } => {
@@ -1153,6 +1304,148 @@ async fn main() -> Result<()> {
                         }
                         Err(e) => eprintln!("Error loading manifest: {}", e),
                     }
+                }
+            }
+            println!("Happy Mugging!");
+        }
+
+        Commands::Resume { action } => {
+            use mug::core::resume::{OperationManager, OperationStatus};
+
+            let repo = Repository::open(".")?;
+            let manager = OperationManager::new(repo.get_db().clone());
+
+            match action {
+                None | Some(ResumeAction::List { paused: false, running: false, completed: false, failed: false }) => {
+                    // Show all operations
+                    let operations = manager.list(None)?;
+                    
+                    if operations.is_empty() {
+                        println!("No operations found");
+                    } else {
+                        println!("Resumable Operations:");
+                        println!();
+                        for op in operations {
+                            let percent = op.progress.percentage()
+                                .map(|p| format!("{:.1}%", p))
+                                .unwrap_or_else(|| "N/A".to_string());
+                            
+                            println!("ID: {}", &op.id[..16]);
+                            println!("  Type: {}", op.op_type.as_str());
+                            println!("  Status: {}", op.status.as_str());
+                            println!("  Progress: {} ({})", percent, op.progress.processed);
+                            println!("  Step: {}", op.state.current_step);
+                            println!("  Updated: {}", op.last_updated);
+                            println!();
+                        }
+                    }
+                }
+
+                Some(ResumeAction::List { paused, running, completed, failed }) => {
+                    let mut filters = vec![];
+                    if paused {
+                        filters.push(OperationStatus::Paused);
+                    }
+                    if running {
+                        filters.push(OperationStatus::Running);
+                    }
+                    if completed {
+                        filters.push(OperationStatus::Completed);
+                    }
+                    if failed {
+                        filters.push(OperationStatus::Failed);
+                    }
+
+                    for filter in filters {
+                        let operations = manager.list(Some(filter))?;
+                        if !operations.is_empty() {
+                            println!("{}:", filter.as_str());
+                            for op in operations {
+                                let percent = op.progress.percentage()
+                                    .map(|p| format!("{:.1}%", p))
+                                    .unwrap_or_else(|| "N/A".to_string());
+                                println!("  {} [{}] {} ({})", &op.id[..16], op.op_type.as_str(), percent, op.state.current_step);
+                            }
+                            println!();
+                        }
+                    }
+                }
+
+                Some(ResumeAction::Show { operation_id }) => {
+                    match manager.get(&operation_id)? {
+                        Some(op) => {
+                            println!("Operation Details:");
+                            println!("  ID: {}", op.id);
+                            println!("  Type: {}", op.op_type.as_str());
+                            println!("  Status: {}", op.status.as_str());
+                            println!("  Created: {}", op.created_at);
+                            println!("  Started: {}", op.started_at);
+                            println!("  Last Updated: {}", op.last_updated);
+                            println!();
+                            println!("Progress:");
+                            println!("  Items: {}/{}", 
+                                op.progress.processed,
+                                op.progress.total.map(|t| t.to_string()).unwrap_or_else(|| "unknown".to_string())
+                            );
+                            
+                            if let Some(percent) = op.progress.percentage() {
+                                println!("  Percentage: {:.1}%", percent);
+                            }
+                            
+                            println!("  Bytes: {}/{}",
+                                op.progress.bytes_processed,
+                                op.progress.total_bytes.map(|b| format!("{} bytes", b)).unwrap_or_else(|| "unknown".to_string())
+                            );
+                            println!();
+                            println!("State:");
+                            println!("  Current Step: {}", op.state.current_step);
+                            if let Some(total) = op.state.total_steps {
+                                println!("  Total Steps: {}", total);
+                            }
+                            if let Some(error) = op.state.error_message {
+                                println!("  Error: {}", error);
+                            }
+                            if !op.state.metadata.is_empty() {
+                                println!("  Metadata:");
+                                for (key, value) in op.state.metadata {
+                                    println!("    {}: {}", key, value);
+                                }
+                            }
+                        }
+                        None => println!("Operation {} not found", operation_id),
+                    }
+                }
+
+                Some(ResumeAction::Continue { operation_id }) => {
+                    match manager.get(&operation_id)? {
+                        Some(op) => {
+                            println!("Resuming operation: {} ({})", &operation_id[..16], op.op_type.as_str());
+                            println!("Previous checkpoint: {}", op.state.current_step);
+                            println!("Progress: {}/{} items", 
+                                op.progress.processed,
+                                op.progress.total.map(|t| t.to_string()).unwrap_or_else(|| "unknown".to_string())
+                            );
+                            println!();
+                            println!("⚠️  Resume functionality is operation-specific");
+                            println!("Run the original command with --resume {} to continue", &operation_id[..16]);
+                        }
+                        None => println!("Operation {} not found", operation_id),
+                    }
+                }
+
+                Some(ResumeAction::Pause { operation_id }) => {
+                    manager.update_status(&operation_id, OperationStatus::Paused)?;
+                    println!("✓ Operation paused");
+                }
+
+                Some(ResumeAction::Delete { operation_id }) => {
+                    manager.delete(&operation_id)?;
+                    println!("✓ Operation deleted");
+                }
+
+                Some(ResumeAction::Cleanup { days }) => {
+                    let deleted = manager.cleanup_old(days)?;
+                    println!("✓ Cleaned up {} old operations (older than {} days)", deleted, days);
                 }
             }
             println!("Happy Mugging!");
