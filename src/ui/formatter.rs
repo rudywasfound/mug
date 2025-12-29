@@ -32,6 +32,31 @@ pub enum DiffLine {
     Context(String),
 }
 
+#[derive(Debug, Clone)]
+pub struct CommitStats {
+    pub branch: String,
+    pub commit_hash: String,
+    pub message: String,
+    pub files_changed: usize,
+    pub insertions: usize,
+    pub deletions: usize,
+    pub files: Vec<FileChange>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FileChange {
+    pub path: String,
+    pub mode: FileMode,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FileMode {
+    Created,
+    Modified,
+    Deleted,
+    Renamed(String),
+}
+
 impl UnicodeFormatter {
     pub fn new(use_unicode: bool, use_colors: bool) -> Self {
         UnicodeFormatter {
@@ -449,6 +474,161 @@ impl UnicodeFormatter {
         let warning = if self.use_unicode { "⚠" } else { "!" };
         let warning_icon = self.colorize(&format!("{} warning:", warning), "bright_yellow");
         format!("{} {}", warning_icon, self.colorize(message, "white"))
+    }
+
+    pub fn format_commit_summary(&self, stats: &CommitStats) -> String {
+        let mut output = String::new();
+
+        // Main commit line: [branch hash] message
+        let bracket_open = if self.use_unicode { "❰" } else { "[" };
+        let bracket_close = if self.use_unicode { "❱" } else { "]" };
+        
+        let branch_colored = self.colorize(&stats.branch, "bright_yellow");
+        let hash_colored = self.colorize(&stats.commit_hash[..7.min(stats.commit_hash.len())], "cyan");
+        let msg_colored = self.colorize(&stats.message, "white").bold().to_string();
+        
+        writeln!(
+            &mut output,
+            "{}{} {} {}{} {}",
+            bracket_open, branch_colored, hash_colored, bracket_close, msg_colored, ""
+        )
+        .unwrap();
+
+        // Stats line: X files changed, +Y insertions(-), -Z deletions(-)
+        let file_icon = if self.use_unicode { "📄" } else { "*" };
+        let add_icon = if self.use_unicode { "➕" } else { "+" };
+        let del_icon = if self.use_unicode { "➖" } else { "-" };
+        
+        let files_part = format!("{} {} file{} changed", 
+            file_icon,
+            stats.files_changed,
+            if stats.files_changed == 1 { "" } else { "s" }
+        );
+        
+        let changes_parts = vec![
+            if stats.insertions > 0 {
+                Some(self.colorize(
+                    &format!("{} {} insertion{}", add_icon, stats.insertions, if stats.insertions == 1 { "" } else { "s" }),
+                    "bright_green"
+                ))
+            } else {
+                None
+            },
+            if stats.deletions > 0 {
+                Some(self.colorize(
+                    &format!("{} {} deletion{}", del_icon, stats.deletions, if stats.deletions == 1 { "" } else { "s" }),
+                    "bright_red"
+                ))
+            } else {
+                None
+            },
+        ];
+        
+        let changes_str = changes_parts
+            .into_iter()
+            .filter_map(|x| x)
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let stats_line = if changes_str.is_empty() {
+            self.colorize(&files_part, "cyan")
+        } else {
+            self.colorize(&files_part, "cyan") + ", " + &changes_str
+        };
+
+        writeln!(&mut output, " {}", stats_line).unwrap();
+
+        // File listing with icons
+        if !stats.files.is_empty() {
+            writeln!(&mut output).unwrap();
+            
+            // Count file modes
+            let mut created = 0;
+            let mut modified = 0;
+            let mut deleted = 0;
+            let mut renamed = 0;
+            
+            for file in &stats.files {
+                match file.mode {
+                    FileMode::Created => created += 1,
+                    FileMode::Modified => modified += 1,
+                    FileMode::Deleted => deleted += 1,
+                    FileMode::Renamed(_) => renamed += 1,
+                }
+            }
+            
+            // Show file type summary
+            let mut summary_parts = Vec::new();
+            if created > 0 {
+                summary_parts.push(self.colorize(
+                    &format!("✨ {} created", created),
+                    "bright_green"
+                ));
+            }
+            if modified > 0 {
+                summary_parts.push(self.colorize(
+                    &format!("✏️ {} modified", modified),
+                    "cyan"
+                ));
+            }
+            if deleted > 0 {
+                summary_parts.push(self.colorize(
+                    &format!("🗑 {} deleted", deleted),
+                    "bright_red"
+                ));
+            }
+            if renamed > 0 {
+                summary_parts.push(self.colorize(
+                    &format!("↻ {} renamed", renamed),
+                    "magenta"
+                ));
+            }
+            
+            if !summary_parts.is_empty() && stats.files.len() > 10 {
+                writeln!(&mut output, " {}", summary_parts.join(", ")).unwrap();
+                writeln!(&mut output).unwrap();
+            }
+            
+            // Limit file listing to first 10 files
+            let display_count = std::cmp::min(stats.files.len(), 10);
+            for (idx, file) in stats.files.iter().enumerate().take(display_count) {
+                let (mode_str, color) = match &file.mode {
+                    FileMode::Created => {
+                        let icon = if self.use_unicode { "✨" } else { "+" };
+                        (format!("{} create mode 100644", icon), "bright_green")
+                    }
+                    FileMode::Modified => {
+                        let icon = if self.use_unicode { "✏️" } else { "~" };
+                        (format!("{} modify", icon), "cyan")
+                    }
+                    FileMode::Deleted => {
+                        let icon = if self.use_unicode { "🗑" } else { "-" };
+                        (format!("{} delete mode 100644", icon), "bright_red")
+                    }
+                    FileMode::Renamed(old_name) => {
+                        let icon = if self.use_unicode { "↻" } else { ">" };
+                        (format!("{} rename {} → {}", icon, old_name, &file.path), "magenta")
+                    }
+                };
+
+                let mode_colored = self.colorize(&mode_str, color);
+                let file_colored = self.colorize(&file.path, "white");
+                writeln!(&mut output, " {} {}", mode_colored, file_colored).unwrap();
+            }
+            
+            // Show "... and X more files" if there are more
+            if stats.files.len() > display_count {
+                let remaining = stats.files.len() - display_count;
+                let more_text = if remaining == 1 {
+                    "... and 1 more file".to_string()
+                } else {
+                    format!("... and {} more files", remaining)
+                };
+                writeln!(&mut output, " {}", self.colorize(&more_text, "cyan")).unwrap();
+            }
+        }
+
+        output
     }
 }
 

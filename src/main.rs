@@ -554,6 +554,7 @@ async fn main() -> Result<()> {
 
         Commands::Commit { message, author } => {
             use mug::ui::UnicodeFormatter;
+            use mug::ui::formatter::{CommitStats, FileChange, FileMode};
             
             let repo = Repository::open(".")?;
             
@@ -565,11 +566,91 @@ async fn main() -> Result<()> {
                 config.get_user_name()
             };
             
-            let commit_id = repo.commit(author_name, message)?;
+            // Get current branch name
+            let branch_manager = mug::core::branch::BranchManager::new(repo.get_db().clone());
+            let branch_name = branch_manager.get_head()?.unwrap_or("main".to_string());
+            
+            // Get index to count files
+            let index = mug::core::index::Index::new(repo.get_db().clone())?;
+            let file_count = index.len();
+            
+            let commit_id = repo.commit(author_name, message.clone())?;
             let short_hash = mug::core::hash::short_hash(&commit_id);
             
+            // Build file list from index and determine if created or modified
+            let parent_tree_hash = if let Some(branch_name) = &Some(branch_name.clone()) {
+                if let Some(branch) = branch_manager.get_branch(branch_name)? {
+                    if !branch.commit_id.is_empty() {
+                        // Get parent commit's tree
+                        let commit_log = mug::core::commit::CommitLog::new(repo.get_db().clone());
+                        if let Ok(commit) = commit_log.get_commit(&branch.commit_id) {
+                            Some(commit.tree_hash)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            let files: Vec<FileChange> = if let Some(parent_hash) = parent_tree_hash {
+                // Compare with parent tree
+                if let Ok(parent_tree) = repo.get_store().get_tree(&parent_hash) {
+                    let parent_hashes: std::collections::HashSet<String> = 
+                        parent_tree.entries.iter().map(|e| e.name.clone()).collect();
+                    
+                    index.entries()
+                        .into_iter()
+                        .map(|entry| {
+                            let mode = if parent_hashes.contains(&entry.path) {
+                                FileMode::Modified
+                            } else {
+                                FileMode::Created
+                            };
+                            FileChange {
+                                path: entry.path,
+                                mode,
+                            }
+                        })
+                        .collect()
+                } else {
+                    // Fallback: treat all as created
+                    index.entries()
+                        .into_iter()
+                        .map(|entry| FileChange {
+                            path: entry.path,
+                            mode: FileMode::Created,
+                        })
+                        .collect()
+                }
+            } else {
+                // First commit: all files are created
+                index.entries()
+                    .into_iter()
+                    .map(|entry| FileChange {
+                        path: entry.path,
+                        mode: FileMode::Created,
+                    })
+                    .collect()
+            };
+            
+            let stats = CommitStats {
+                branch: branch_name,
+                commit_hash: short_hash,
+                message,
+                files_changed: file_count,
+                insertions: 0,  // TODO: Calculate from diff
+                deletions: 0,   // TODO: Calculate from diff
+                files,
+            };
+            
             let formatter = UnicodeFormatter::new(true, true);
-            println!("{}", formatter.format_success(&format!("Commit created: {}", short_hash)));
+            println!("{}", formatter.format_commit_summary(&stats));
         }
 
         Commands::Log { oneline } => {
