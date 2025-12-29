@@ -581,9 +581,8 @@ impl UnicodeFormatter {
                 writeln!(&mut output).unwrap();
             }
             
-            // Limit file listing to first 10 files
-            let display_count = std::cmp::min(stats.files.len(), 10);
-            for file in stats.files.iter().take(display_count) {
+            // Show all files
+            for file in stats.files.iter() {
                 let (mode_char, mode_str_owned, color) = match &file.mode {
                     FileMode::Created => {
                         ("+", "create mode 100644".to_string(), "bright_green")
@@ -603,17 +602,6 @@ impl UnicodeFormatter {
                 let mode_colored = self.colorize(&mode_str_owned, color);
                 let file_colored = self.colorize(&file.path, "white");
                 writeln!(&mut output, " {} {} {}", symbol_colored, mode_colored, file_colored).unwrap();
-            }
-            
-            // Show "... and X more files" if there are more
-            if stats.files.len() > display_count {
-                let remaining = stats.files.len() - display_count;
-                let more_text = if remaining == 1 {
-                    "... and 1 more file".to_string()
-                } else {
-                    format!("... and {} more files", remaining)
-                };
-                writeln!(&mut output, " {}", self.colorize(&more_text, "cyan")).unwrap();
             }
         }
 
