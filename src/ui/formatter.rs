@@ -480,27 +480,19 @@ impl UnicodeFormatter {
         let mut output = String::new();
 
         // Main commit line: [branch hash] message
-        let bracket_open = if self.use_unicode { "❰" } else { "[" };
-        let bracket_close = if self.use_unicode { "❱" } else { "]" };
-        
         let branch_colored = self.colorize(&stats.branch, "bright_yellow");
         let hash_colored = self.colorize(&stats.commit_hash[..7.min(stats.commit_hash.len())], "cyan");
         let msg_colored = self.colorize(&stats.message, "white").bold().to_string();
         
         writeln!(
             &mut output,
-            "{}{} {} {}{} {}",
-            bracket_open, branch_colored, hash_colored, bracket_close, msg_colored, ""
+            "[{}] {} {}",
+            branch_colored, hash_colored, msg_colored
         )
         .unwrap();
 
         // Stats line: X files changed, +Y insertions(-), -Z deletions(-)
-        let file_icon = if self.use_unicode { "📄" } else { "*" };
-        let add_icon = if self.use_unicode { "➕" } else { "+" };
-        let del_icon = if self.use_unicode { "➖" } else { "-" };
-        
-        let files_part = format!("{} {} file{} changed", 
-            file_icon,
+        let files_part = format!("{} file{} changed", 
             stats.files_changed,
             if stats.files_changed == 1 { "" } else { "s" }
         );
@@ -508,7 +500,7 @@ impl UnicodeFormatter {
         let changes_parts = vec![
             if stats.insertions > 0 {
                 Some(self.colorize(
-                    &format!("{} {} insertion{}", add_icon, stats.insertions, if stats.insertions == 1 { "" } else { "s" }),
+                    &format!("+{} insertion{}", stats.insertions, if stats.insertions == 1 { "" } else { "s" }),
                     "bright_green"
                 ))
             } else {
@@ -516,7 +508,7 @@ impl UnicodeFormatter {
             },
             if stats.deletions > 0 {
                 Some(self.colorize(
-                    &format!("{} {} deletion{}", del_icon, stats.deletions, if stats.deletions == 1 { "" } else { "s" }),
+                    &format!("-{} deletion{}", stats.deletions, if stats.deletions == 1 { "" } else { "s" }),
                     "bright_red"
                 ))
             } else {
@@ -538,7 +530,7 @@ impl UnicodeFormatter {
 
         writeln!(&mut output, " {}", stats_line).unwrap();
 
-        // File listing with icons
+        // File listing with ASCII symbols and colors
         if !stats.files.is_empty() {
             writeln!(&mut output).unwrap();
             
@@ -561,25 +553,25 @@ impl UnicodeFormatter {
             let mut summary_parts = Vec::new();
             if created > 0 {
                 summary_parts.push(self.colorize(
-                    &format!("✨ {} created", created),
+                    &format!("+{} created", created),
                     "bright_green"
                 ));
             }
             if modified > 0 {
                 summary_parts.push(self.colorize(
-                    &format!("✏️ {} modified", modified),
-                    "cyan"
+                    &format!("~{} modified", modified),
+                    "yellow"
                 ));
             }
             if deleted > 0 {
                 summary_parts.push(self.colorize(
-                    &format!("🗑 {} deleted", deleted),
+                    &format!("-{} deleted", deleted),
                     "bright_red"
                 ));
             }
             if renamed > 0 {
                 summary_parts.push(self.colorize(
-                    &format!("↻ {} renamed", renamed),
+                    &format!(">{} renamed", renamed),
                     "magenta"
                 ));
             }
@@ -591,29 +583,26 @@ impl UnicodeFormatter {
             
             // Limit file listing to first 10 files
             let display_count = std::cmp::min(stats.files.len(), 10);
-            for (idx, file) in stats.files.iter().enumerate().take(display_count) {
-                let (mode_str, color) = match &file.mode {
+            for file in stats.files.iter().take(display_count) {
+                let (mode_char, mode_str_owned, color) = match &file.mode {
                     FileMode::Created => {
-                        let icon = if self.use_unicode { "✨" } else { "+" };
-                        (format!("{} create mode 100644", icon), "bright_green")
+                        ("+", "create mode 100644".to_string(), "bright_green")
                     }
                     FileMode::Modified => {
-                        let icon = if self.use_unicode { "✏️" } else { "~" };
-                        (format!("{} modify", icon), "cyan")
+                        ("~", "modify".to_string(), "yellow")
                     }
                     FileMode::Deleted => {
-                        let icon = if self.use_unicode { "🗑" } else { "-" };
-                        (format!("{} delete mode 100644", icon), "bright_red")
+                        ("-", "delete mode 100644".to_string(), "bright_red")
                     }
                     FileMode::Renamed(old_name) => {
-                        let icon = if self.use_unicode { "↻" } else { ">" };
-                        (format!("{} rename {} → {}", icon, old_name, &file.path), "magenta")
+                        (">", format!("rename {} -> {}", old_name, &file.path), "magenta")
                     }
                 };
 
-                let mode_colored = self.colorize(&mode_str, color);
+                let symbol_colored = self.colorize(mode_char, color);
+                let mode_colored = self.colorize(&mode_str_owned, color);
                 let file_colored = self.colorize(&file.path, "white");
-                writeln!(&mut output, " {} {}", mode_colored, file_colored).unwrap();
+                writeln!(&mut output, " {} {} {}", symbol_colored, mode_colored, file_colored).unwrap();
             }
             
             // Show "... and X more files" if there are more

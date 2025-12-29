@@ -566,28 +566,16 @@ async fn main() -> Result<()> {
                 config.get_user_name()
             };
             
-            // Get current branch name
+            // Get current branch name and parent commit BEFORE committing
             let branch_manager = mug::core::branch::BranchManager::new(repo.get_db().clone());
             let branch_name = branch_manager.get_head()?.unwrap_or("main".to_string());
             
-            // Get index to count files
-            let index = mug::core::index::Index::new(repo.get_db().clone())?;
-            let file_count = index.len();
-            
-            let commit_id = repo.commit(author_name, message.clone())?;
-            let short_hash = mug::core::hash::short_hash(&commit_id);
-            
-            // Build file list from index and determine if created or modified
-            let parent_tree_hash = if let Some(branch_name) = &Some(branch_name.clone()) {
-                if let Some(branch) = branch_manager.get_branch(branch_name)? {
-                    if !branch.commit_id.is_empty() {
-                        // Get parent commit's tree
-                        let commit_log = mug::core::commit::CommitLog::new(repo.get_db().clone());
-                        if let Ok(commit) = commit_log.get_commit(&branch.commit_id) {
-                            Some(commit.tree_hash)
-                        } else {
-                            None
-                        }
+            // Get parent tree hash BEFORE committing
+            let parent_tree_hash = if let Some(branch) = branch_manager.get_branch(&branch_name)? {
+                if !branch.commit_id.is_empty() {
+                    let commit_log = mug::core::commit::CommitLog::new(repo.get_db().clone());
+                    if let Ok(commit) = commit_log.get_commit(&branch.commit_id) {
+                        Some(commit.tree_hash)
                     } else {
                         None
                     }
@@ -597,6 +585,13 @@ async fn main() -> Result<()> {
             } else {
                 None
             };
+            
+            // Get index to count files
+            let index = mug::core::index::Index::new(repo.get_db().clone())?;
+            let file_count = index.len();
+            
+            let commit_id = repo.commit(author_name, message.clone())?;
+            let short_hash = mug::core::hash::short_hash(&commit_id);
 
             let files: Vec<FileChange> = if let Some(parent_hash) = parent_tree_hash {
                 // Compare with parent tree
