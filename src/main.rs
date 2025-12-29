@@ -742,7 +742,7 @@ async fn main() -> Result<()> {
         }
 
         Commands::Branches => {
-            use mug::ui::{UnicodeFormatter, select_branch_interactive};
+            use mug::ui::UnicodeFormatter;
             
             let repo = Repository::open(".")?;
             let current = repo.current_branch()?;
@@ -752,22 +752,6 @@ async fn main() -> Result<()> {
             
             let formatter = UnicodeFormatter::new(true, true);
             println!("{}", formatter.format_branch_list(&current_str, &branches));
-            
-            // Prompt for interactive selection
-            if let Some(selected_branch) = select_branch_interactive(branches.clone(), current_str.clone()) {
-                if selected_branch != current_str {
-                    match repo.checkout(selected_branch.clone()) {
-                        Ok(_) => {
-                            println!("{}", formatter.format_success(&format!("Switched to branch: {}", selected_branch)));
-                        }
-                        Err(e) => {
-                            println!("{}", formatter.format_error(&format!("Failed to switch: {}", e)));
-                        }
-                    }
-                } else {
-                    println!("{}", formatter.format_warning("Already on this branch"));
-                }
-            }
         }
 
         Commands::Checkout { branch } => {
