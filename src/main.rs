@@ -523,8 +523,12 @@ async fn main() -> Result<()> {
         Commands::Add { path } => {
             let repo = Repository::open(".")?;
             if path == "." {
-                repo.add_all()?;
-                println!("Staged all changes");
+                let count = repo.add_all()?;
+                if count == 0 {
+                    println!("Everything up to date");
+                } else {
+                    println!("Staged {} file{}", count, if count == 1 { "" } else { "s" });
+                }
             } else {
                 repo.add(&path)?;
                 println!("Staged {}", path);

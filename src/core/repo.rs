@@ -104,8 +104,11 @@ impl Repository {
     }
 
     /// Stage multiple files (glob patterns)
-    pub fn add_all(&self) -> Result<()> {
-        let mut index = Index::new(self.db.clone())?;
+    /// Returns the number of files that were newly added
+    pub fn add_all(&self) -> Result<usize> {
+        let index = Index::new(self.db.clone())?;
+        let mut mut_index = index;
+        let mut added_count = 0;
 
         for entry in WalkDir::new(&self.root)
             .into_iter()
@@ -123,14 +126,20 @@ impl Repository {
                 let content = std::fs::read(path)?;
                 let hash = hash::hash_bytes(&content);
                 self.store.store_blob(&content)?;
-                index.add(path_str, hash)?;
+                
+                // Only count if this is a new file in the index
+                let is_new = mut_index.get(&path_str).is_none();
+                mut_index.add(path_str, hash)?;
+                if is_new {
+                    added_count += 1;
+                }
             }
         }
 
         // Batch flush all index writes at once
-        index.flush()?;
+        mut_index.flush()?;
 
-        Ok(())
+        Ok(added_count)
     }
 
     /// Remove a file from staging
