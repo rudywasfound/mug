@@ -106,33 +106,57 @@ impl Repository {
     /// Stage multiple files (glob patterns)
     /// Returns the number of files that were newly added
     pub fn add_all(&self) -> Result<usize> {
+        use rayon::prelude::*;
+        
+        // Load existing index once
         let index = Index::new(self.db.clone())?;
-        let mut mut_index = index;
-        let mut added_count = 0;
+        let existing_paths: std::collections::HashSet<String> = index
+            .entries()
+            .into_iter()
+            .map(|e| e.path)
+            .collect();
 
-        for entry in WalkDir::new(&self.root)
+        // Collect all file paths first
+        let files: Vec<_> = WalkDir::new(&self.root)
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_file())
-        {
-            let path = entry.path();
-            if path.to_string_lossy().contains(".mug") {
-                continue;
-            }
+            .filter(|e| !e.path().to_string_lossy().contains(".mug"))
+            .filter_map(|e| {
+                let path = e.path();
+                if let Ok(rel_path) = path.strip_prefix(&self.root) {
+                    Some((path.to_path_buf(), rel_path.to_string_lossy().to_string()))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-            if let Ok(rel_path) = path.strip_prefix(&self.root) {
-                let path_str = rel_path.to_string_lossy().to_string();
+        // Process files in parallel
+        let file_entries: Result<Vec<_>> = files
+            .par_iter()
+            .map(|(path, path_str)| {
                 // Read file once and use for both hashing and storing
                 let content = std::fs::read(path)?;
                 let hash = hash::hash_bytes(&content);
                 self.store.store_blob(&content)?;
                 
-                // Only count if this is a new file in the index
-                let is_new = mut_index.get(&path_str).is_none();
-                mut_index.add(path_str, hash)?;
-                if is_new {
-                    added_count += 1;
-                }
+                // Check if this is a new file
+                let is_new = !existing_paths.contains(path_str);
+                Ok((path_str.clone(), hash, is_new))
+            })
+            .collect();
+
+        let entries = file_entries?;
+        
+        // Now update index sequentially (batch writes)
+        let mut mut_index = Index::new(self.db.clone())?;
+        let mut added_count = 0;
+        
+        for (path_str, hash, is_new) in entries {
+            mut_index.add(path_str, hash)?;
+            if is_new {
+                added_count += 1;
             }
         }
 
