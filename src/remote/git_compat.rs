@@ -162,11 +162,11 @@ fn import_git_commits(git_path: &Path, mug_repo: &Repository) -> Result<()> {
                             .unwrap_or_else(|| "(no message)".to_string());
 
                         let mut parent_ids = commit.parent_ids();
-                        if let Some(parent_id) = parent_ids.next() {
-                            queue.push(parent_id.to_hex().to_string());
-                        }
-
-                        let parent_str: Option<String> = commit.parent_ids().next().map(|p| p.to_hex().to_string());
+                        let parent_str: Option<String> = parent_ids.next().map(|p| {
+                            let hex = p.to_hex().to_string();
+                            queue.push(hex.clone());
+                            hex
+                        });
                         let commit_json = if let Some(parent_hash) = parent_str {
                             serde_json::json!({
                                 "id": commit_hash,

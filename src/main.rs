@@ -56,7 +56,7 @@ enum Commands {
     },
 
     /// Show commit details
-    Show {
+    Inspect {
         /// Commit ID to show
         commit: String,
     },
@@ -67,14 +67,14 @@ enum Commands {
         pattern: String,
     },
 
-    /// Create a new branch
-    Branch {
-        /// Branch name
+    /// Create a new bookmark (branch)
+    Bookmark {
+        /// Bookmark name
         name: String,
     },
 
-    /// List branches
-    Branches,
+    /// List bookmarks (branches)
+    Bookmarks,
 
     /// Switch branches
     Checkout {
@@ -277,7 +277,7 @@ enum Commands {
     },
 
     /// Configure repository settings
-    Config {
+    Conf {
         #[command(subcommand)]
         action: ConfigAction,
     },
@@ -289,7 +289,7 @@ enum Commands {
     Gc,
 
     /// Show reference history
-    Reflog {
+    History {
         /// Optional ref to show history for
         reference: Option<String>,
     },
@@ -713,7 +713,7 @@ async fn main() -> Result<()> {
             }
         }
 
-        Commands::Show { commit } => {
+        Commands::Inspect { commit } => {
             let repo = Repository::open(".")?;
             let info = mug::commands::show_commit(&repo, &commit)?;
             println!("{}", info);
@@ -731,7 +731,7 @@ async fn main() -> Result<()> {
             println!("Happy Mugging!");
         }
 
-        Commands::Branch { name } => {
+        Commands::Bookmark { name } => {
             use mug::ui::UnicodeFormatter;
             
             let repo = Repository::open(".")?;
@@ -741,7 +741,7 @@ async fn main() -> Result<()> {
             println!("{}", formatter.format_success(&format!("Created branch: {}", name)));
         }
 
-        Commands::Branches => {
+        Commands::Bookmarks => {
             use mug::ui::UnicodeFormatter;
             
             let repo = Repository::open(".")?;
@@ -1099,7 +1099,7 @@ async fn main() -> Result<()> {
             println!("{}", message);
         }
 
-        Commands::Config { action } => {
+        Commands::Conf { action } => {
             let repo = Repository::open(".")?;
             
             match action {
@@ -1152,7 +1152,7 @@ async fn main() -> Result<()> {
             println!("Happy Mugging!");
         }
 
-        Commands::Reflog { reference } => {
+        Commands::History { reference } => {
             let repo = Repository::open(".")?;
             let history = mug::core::repo::get_reflog(&repo, reference.as_deref())?;
             
